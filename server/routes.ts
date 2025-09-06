@@ -24,6 +24,7 @@ import { WorkflowMarketplace } from "./services/workflow-marketplace";
 import { RealTimeAnalytics } from "./services/real-time-analytics";
 import { registerSocialAccountRoutes } from "./routes/social-accounts";
 import { MultiAccountPoster } from "./services/multi-account-poster";
+import googleCloudRoutes from "./routes/google-cloud-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -72,6 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register social media account management routes
   registerSocialAccountRoutes(app);
+  
+  // Register Google Cloud automation routes
+  app.use('/api/gcloud', googleCloudRoutes);
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
