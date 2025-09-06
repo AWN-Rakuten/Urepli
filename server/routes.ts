@@ -550,6 +550,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Auto-optimization endpoint - triggered by n8n workflow
+  app.post("/api/n8n-templates/auto-optimize", async (req, res) => {
+    try {
+      // Get the active template
+      const templates = await storage.getN8nTemplates();
+      const activeTemplate = templates.find(t => t.isActive);
+      
+      if (!activeTemplate) {
+        return res.status(404).json({ error: "No active template found" });
+      }
+
+      // Check if enough time has passed since last optimization (minimum 1 hour)
+      const lastOptimization = activeTemplate.optimizationHistory?.slice(-1)[0];
+      if (lastOptimization) {
+        const timeSinceLastOptimization = Date.now() - new Date(lastOptimization.timestamp).getTime();
+        const minimumInterval = 60 * 60 * 1000; // 1 hour
+        
+        if (timeSinceLastOptimization < minimumInterval) {
+          return res.json({ 
+            message: "Optimization skipped - too soon since last optimization",
+            nextOptimizationIn: minimumInterval - timeSinceLastOptimization
+          });
+        }
+      }
+
+      // Perform automatic optimization
+      const [banditArms, content] = await Promise.all([
+        storage.getBanditArms(),
+        storage.getContent(20)
+      ]);
+
+      const totalRevenue = banditArms.reduce((sum, arm) => sum + arm.profit, 0);
+      const totalCost = banditArms.reduce((sum, arm) => sum + arm.cost, 0);
+      const roas = totalCost > 0 ? totalRevenue / totalCost : 0;
+
+      // Only optimize if performance is below threshold or potential for improvement
+      if (activeTemplate.performanceScore >= 95) {
+        return res.json({ 
+          message: "Optimization skipped - template already highly optimized",
+          performanceScore: activeTemplate.performanceScore
+        });
+      }
+
+      const optimizationRequest = {
+        templateId: activeTemplate.id,
+        performanceData: {
+          totalRevenue,
+          totalCost,
+          roas,
+          contentGenerated: content.length,
+          averageEngagement: content.reduce((sum, c) => sum + c.views, 0) / content.length || 0,
+          platformPerformance: banditArms.reduce((acc, arm) => {
+            acc[arm.platform.toLowerCase()] = arm.score;
+            return acc;
+          }, {} as Record<string, number>)
+        },
+        banditArms,
+        currentSettings: activeTemplate.template.settings || {}
+      };
+
+      const result = await n8nService.optimizeTemplate(activeTemplate, optimizationRequest);
+
+      // Update template
+      await storage.updateN8nTemplate(activeTemplate.id, {
+        template: result.optimizedTemplate.template,
+        version: result.optimizedTemplate.version,
+        performanceScore: result.optimizedTemplate.performanceScore,
+        optimizationHistory: result.optimizedTemplate.optimizationHistory
+      });
+
+      // Record optimization event
+      await storage.createOptimizationEvent(result.optimizationEvent);
+
+      // Log auto-optimization
+      await storage.createAutomationLog({
+        type: "auto_optimization",
+        message: `Auto-optimization completed: ${result.performanceImprovement}% improvement expected`,
+        status: "success",
+        metadata: { 
+          templateId: activeTemplate.id,
+          performanceImprovement: result.performanceImprovement,
+          appliedChanges: result.appliedChanges,
+          trigger: "automatic"
+        }
+      });
+
+      res.json({
+        success: true,
+        performanceImprovement: result.performanceImprovement,
+        appliedChanges: result.appliedChanges,
+        newVersion: result.optimizedTemplate.version
+      });
+    } catch (error) {
+      await storage.createAutomationLog({
+        type: "auto_optimization",
+        message: `Auto-optimization failed: ${error}`,
+        status: "error",
+        metadata: { error: String(error), trigger: "automatic" }
+      });
+      res.status(500).json({ error: "Auto-optimization failed" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
