@@ -4,11 +4,13 @@ import { storage } from "./storage";
 import { GeminiService } from "./services/gemini";
 import { WorkflowService } from "./services/workflow";
 import { BanditAlgorithmService } from "./services/bandit";
+import { N8nTemplateService } from "./services/n8n-template";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
   const workflowService = new WorkflowService();
   const banditService = new BanditAlgorithmService();
+  const n8nService = new N8nTemplateService();
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {
@@ -376,6 +378,175 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to optimize workflow" });
+    }
+  });
+
+  // N8n Templates management
+  app.get("/api/n8n-templates", async (_req, res) => {
+    try {
+      const templates = await storage.getN8nTemplates();
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch n8n templates" });
+    }
+  });
+
+  app.get("/api/n8n-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getN8nTemplate(id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch template" });
+    }
+  });
+
+  app.post("/api/n8n-templates", async (req, res) => {
+    try {
+      const templateData = req.body;
+      const template = await storage.createN8nTemplate(templateData);
+      
+      await storage.createAutomationLog({
+        type: "n8n_template",
+        message: `New n8n template created: "${template.name}"`,
+        status: "success",
+        metadata: { templateId: template.id }
+      });
+
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create template" });
+    }
+  });
+
+  app.post("/api/n8n-templates/:id/optimize", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getN8nTemplate(id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      // Get current performance data
+      const [banditArms, content] = await Promise.all([
+        storage.getBanditArms(),
+        storage.getContent(10)
+      ]);
+
+      const totalRevenue = banditArms.reduce((sum, arm) => sum + arm.profit, 0);
+      const totalCost = banditArms.reduce((sum, arm) => sum + arm.cost, 0);
+      const roas = totalCost > 0 ? totalRevenue / totalCost : 0;
+
+      const optimizationRequest = {
+        templateId: id,
+        performanceData: {
+          totalRevenue,
+          totalCost,
+          roas,
+          contentGenerated: content.length,
+          averageEngagement: content.reduce((sum, c) => sum + c.views, 0) / content.length || 0,
+          platformPerformance: banditArms.reduce((acc, arm) => {
+            acc[arm.platform.toLowerCase()] = arm.score;
+            return acc;
+          }, {} as Record<string, number>)
+        },
+        banditArms,
+        currentSettings: template.template.settings || {}
+      };
+
+      // Perform optimization using Gemini AI
+      const result = await n8nService.optimizeTemplate(template, optimizationRequest);
+
+      // Update template in storage
+      const updatedTemplate = await storage.updateN8nTemplate(id, {
+        template: result.optimizedTemplate.template,
+        version: result.optimizedTemplate.version,
+        performanceScore: result.optimizedTemplate.performanceScore,
+        optimizationHistory: result.optimizedTemplate.optimizationHistory
+      });
+
+      // Record optimization event
+      await storage.createOptimizationEvent(result.optimizationEvent);
+
+      // Log optimization
+      await storage.createAutomationLog({
+        type: "n8n_optimization",
+        message: `n8n template "${template.name}" optimized using Gemini AI (${result.performanceImprovement}% improvement expected)`,
+        status: "success",
+        metadata: { 
+          templateId: id,
+          performanceImprovement: result.performanceImprovement,
+          appliedChanges: result.appliedChanges
+        }
+      });
+
+      res.json({
+        optimizedTemplate: updatedTemplate,
+        performanceImprovement: result.performanceImprovement,
+        appliedChanges: result.appliedChanges,
+        optimizationEvent: result.optimizationEvent
+      });
+    } catch (error) {
+      await storage.createAutomationLog({
+        type: "n8n_optimization",
+        message: `Failed to optimize n8n template: ${error}`,
+        status: "error",
+        metadata: { templateId: req.params.id, error: String(error) }
+      });
+      res.status(500).json({ error: "Failed to optimize template" });
+    }
+  });
+
+  app.post("/api/n8n-templates/analyze-performance", async (req, res) => {
+    try {
+      // Get current system performance for analysis
+      const [banditArms, content, logs] = await Promise.all([
+        storage.getBanditArms(),
+        storage.getContent(50),
+        storage.getAutomationLogs(100)
+      ]);
+
+      const performanceData = {
+        totalRevenue: banditArms.reduce((sum, arm) => sum + arm.profit, 0),
+        totalCost: banditArms.reduce((sum, arm) => sum + arm.cost, 0),
+        contentGenerated: content.length,
+        successfulExecutions: logs.filter(log => log.status === 'success').length,
+        failedExecutions: logs.filter(log => log.status === 'error').length,
+        platformDistribution: banditArms.reduce((acc, arm) => {
+          acc[arm.platform] = (acc[arm.platform] || 0) + arm.allocation;
+          return acc;
+        }, {} as Record<string, number>)
+      };
+
+      // Analyze with Gemini
+      const insights = await geminiService.analyzePerformanceData([performanceData]);
+
+      res.json({
+        performanceData,
+        insights,
+        timestamp: new Date()
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to analyze performance" });
+    }
+  });
+
+  app.get("/api/optimization-events", async (req, res) => {
+    try {
+      const { templateId, limit } = req.query;
+      const events = await storage.getOptimizationEvents(
+        templateId as string,
+        limit ? parseInt(limit as string) : undefined
+      );
+      res.json(events);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch optimization events" });
     }
   });
 
