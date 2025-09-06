@@ -7,6 +7,7 @@ import BanditOptimization from "@/components/BanditOptimization";
 import ContentLibrary from "@/components/ContentLibrary";
 import AutomationLogs from "@/components/AutomationLogs";
 import ConfigurationModal from "@/components/ConfigurationModal";
+import N8nTemplates from "@/components/N8nTemplates";
 import { Button } from "@/components/ui/button";
 import { Plus, Play, Settings } from "lucide-react";
 import type { DashboardMetrics, Workflow, BanditArm, Content, AutomationLog, ApiConfiguration } from "@/types";
@@ -111,6 +112,11 @@ export default function Dashboard() {
               <BanditOptimization banditArms={dashboardData.banditArms} />
             </>
           )}
+        </div>
+
+        {/* N8n Templates Section */}
+        <div className="mb-8">
+          <N8nTemplates />
         </div>
 
         {/* Content and Logs */}

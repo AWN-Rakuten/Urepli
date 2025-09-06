@@ -74,3 +74,27 @@ export interface WorkflowOptimization {
   reasoning: string;
   expectedImprovement: number;
 }
+
+export interface N8nTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  template: any;
+  version: number;
+  performanceScore: number;
+  isActive: boolean;
+  optimizationHistory: any[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OptimizationEvent {
+  id: string;
+  templateId: string;
+  performanceData: any;
+  geminiAnalysis: any;
+  appliedChanges: any;
+  performanceImprovement: number | null;
+  status: string;
+  createdAt: string;
+}
