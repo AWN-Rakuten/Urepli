@@ -12,6 +12,9 @@ import { OfferRotatorService } from "./services/offer-rotator";
 import { ProfitBanditService } from "./services/profit-bandit";
 import { ComplianceGuardService } from "./services/compliance-guard";
 import { VideoOrchestrator } from "./services/video-orchestrator";
+import { AutomationPipeline } from "./services/automation-pipeline";
+import { AdSpendManager } from "./services/ad-spend-manager";
+import { HumanApprovalWorkflow } from "./services/human-approval-workflow";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -25,6 +28,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const profitBandit = new ProfitBanditService(storage);
   const complianceGuard = new ComplianceGuardService(storage);
   const videoOrchestrator = new VideoOrchestrator(storage);
+  const automationPipeline = new AutomationPipeline(storage);
+  const adSpendManager = new AdSpendManager(storage);
+  const approvalWorkflow = new HumanApprovalWorkflow(storage);
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {
@@ -1067,6 +1073,195 @@ URL: ${item.link}
       res.json(analysis);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch cost analysis" });
+    }
+  });
+
+  // Full Automation Pipeline endpoints
+  app.post("/api/automation/trigger", async (_req, res) => {
+    try {
+      const taskIds = await automationPipeline.triggerFullAutomation();
+      res.json({ 
+        success: true, 
+        message: `Automation triggered with ${taskIds.length} tasks`,
+        taskIds 
+      });
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Failed to trigger automation",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/automation/emergency-stop", async (req, res) => {
+    try {
+      const { reason } = req.body;
+      await automationPipeline.emergencyStop(reason || "Manual emergency stop");
+      res.json({ success: true, message: "Emergency stop activated" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to activate emergency stop" });
+    }
+  });
+
+  app.post("/api/automation/resume", async (_req, res) => {
+    try {
+      automationPipeline.resumeAutomation();
+      res.json({ success: true, message: "Automation resumed" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to resume automation" });
+    }
+  });
+
+  app.get("/api/automation/metrics", async (_req, res) => {
+    try {
+      const metrics = automationPipeline.getMetrics();
+      res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch automation metrics" });
+    }
+  });
+
+  app.get("/api/automation/tasks", async (_req, res) => {
+    try {
+      const tasks = automationPipeline.getTasks();
+      res.json(tasks);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch automation tasks" });
+    }
+  });
+
+  // Ad Spend Management endpoints
+  app.get("/api/ad-spend/budget-status", async (_req, res) => {
+    try {
+      const status = await adSpendManager.getBudgetStatus();
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch budget status" });
+    }
+  });
+
+  app.get("/api/ad-spend/pending-decisions", async (_req, res) => {
+    try {
+      const decisions = adSpendManager.getPendingDecisions();
+      res.json(decisions);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending decisions" });
+    }
+  });
+
+  app.post("/api/ad-spend/approve/:decisionId", async (req, res) => {
+    try {
+      const { decisionId } = req.params;
+      const { approvedBy } = req.body;
+      
+      await adSpendManager.approveSpendDecision(decisionId, approvedBy || 'user');
+      res.json({ success: true, message: "Spend decision approved" });
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Failed to approve spend decision",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/ad-spend/reject/:decisionId", async (req, res) => {
+    try {
+      const { decisionId } = req.params;
+      const { rejectedBy } = req.body;
+      
+      await adSpendManager.rejectSpendDecision(decisionId, rejectedBy || 'user');
+      res.json({ success: true, message: "Spend decision rejected" });
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Failed to reject spend decision",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.put("/api/ad-spend/config", async (req, res) => {
+    try {
+      const config = req.body;
+      adSpendManager.updateConfig(config);
+      res.json({ success: true, message: "Ad spend configuration updated" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update configuration" });
+    }
+  });
+
+  app.get("/api/ad-spend/config", async (_req, res) => {
+    try {
+      const config = adSpendManager.getConfig();
+      res.json(config);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch configuration" });
+    }
+  });
+
+  // Human Approval Workflow endpoints
+  app.get("/api/approvals/pending", async (_req, res) => {
+    try {
+      const requests = approvalWorkflow.getPendingRequests();
+      res.json(requests);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch pending approvals" });
+    }
+  });
+
+  app.post("/api/approvals/approve/:requestId", async (req, res) => {
+    try {
+      const { requestId } = req.params;
+      const { approvedBy, comments } = req.body;
+      
+      await approvalWorkflow.approveRequest(requestId, approvedBy || 'user', comments);
+      res.json({ success: true, message: "Request approved" });
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Failed to approve request",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/approvals/reject/:requestId", async (req, res) => {
+    try {
+      const { requestId } = req.params;
+      const { rejectedBy, comments } = req.body;
+      
+      await approvalWorkflow.rejectRequest(requestId, rejectedBy || 'user', comments);
+      res.json({ success: true, message: "Request rejected" });
+    } catch (error) {
+      res.status(500).json({ 
+        error: "Failed to reject request",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.post("/api/approvals/enable-auto", async (_req, res) => {
+    try {
+      approvalWorkflow.enableAutoApproval();
+      res.json({ success: true, message: "Auto-approval enabled" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to enable auto-approval" });
+    }
+  });
+
+  app.post("/api/approvals/disable-auto", async (_req, res) => {
+    try {
+      approvalWorkflow.disableAutoApproval();
+      res.json({ success: true, message: "Auto-approval disabled" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to disable auto-approval" });
+    }
+  });
+
+  app.get("/api/approvals/stats", async (_req, res) => {
+    try {
+      const stats = approvalWorkflow.getStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch approval stats" });
     }
   });
 
