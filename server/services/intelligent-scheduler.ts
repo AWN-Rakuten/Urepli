@@ -3,7 +3,7 @@ import { GoogleCloudROIMonitor } from './google-cloud-roi-monitor';
 import { OpenSourceIntegrations } from './open-source-integrations';
 import { Firestore } from '@google-cloud/firestore';
 import { BigQuery } from '@google-cloud/bigquery';
-import { Scheduler } from '@google-cloud/scheduler';
+import { CloudSchedulerClient } from '@google-cloud/scheduler';
 
 export interface OptimalSchedule {
   id: string;
@@ -59,7 +59,7 @@ export class IntelligentScheduler {
   private integrations: OpenSourceIntegrations;
   private firestore: Firestore;
   private bigquery: BigQuery;
-  private scheduler: Scheduler;
+  private scheduler: CloudSchedulerClient;
   
   private readonly PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID || 'mnp-dashboard';
   
@@ -116,7 +116,7 @@ export class IntelligentScheduler {
       projectId: this.PROJECT_ID,
     });
     
-    this.scheduler = new Scheduler({
+    this.scheduler = new CloudSchedulerClient({
       projectId: this.PROJECT_ID,
     });
   }
