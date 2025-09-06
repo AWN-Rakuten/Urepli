@@ -61,8 +61,26 @@ export const apiConfigurations = pgTable("api_configurations", {
   googleCloudBucket: text("google_cloud_bucket"),
   tiktokAccessToken: text("tiktok_access_token"),
   instagramAccessToken: text("instagram_access_token"),
+  mochiApiKey: text("mochi_api_key"),
+  lumaApiKey: text("luma_api_key"),
   isConfigured: boolean("is_configured").default(false),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const videoGenerations = pgTable("video_generations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  provider: text("provider").notNull(), // 'mochi' or 'luma'
+  prompt: text("prompt").notNull(),
+  status: text("status").notNull().default("pending"), // pending, processing, completed, failed
+  videoUrl: text("video_url"),
+  thumbnailUrl: text("thumbnail_url"),
+  cost: real("cost").default(0),
+  duration: real("duration"), // seconds
+  resolution: text("resolution"),
+  contentId: varchar("content_id"), // link to content table
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
 });
 
 export const n8nTemplates = pgTable("n8n_templates", {
@@ -125,6 +143,12 @@ export const insertOptimizationEventSchema = createInsertSchema(optimizationEven
   createdAt: true,
 });
 
+export const insertVideoGenerationSchema = createInsertSchema(videoGenerations).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Workflow = typeof workflows.$inferSelect;
@@ -134,6 +158,7 @@ export type AutomationLog = typeof automationLogs.$inferSelect;
 export type ApiConfiguration = typeof apiConfigurations.$inferSelect;
 export type N8nTemplate = typeof n8nTemplates.$inferSelect;
 export type OptimizationEvent = typeof optimizationEvents.$inferSelect;
+export type VideoGeneration = typeof videoGenerations.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,

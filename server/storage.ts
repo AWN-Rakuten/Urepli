@@ -7,8 +7,11 @@ import {
   type AutomationLog, 
   type ApiConfiguration,
   type N8nTemplate,
-  type OptimizationEvent
+  type OptimizationEvent,
+  type VideoGeneration,
+  insertVideoGenerationSchema
 } from "@shared/schema";
+import { z } from "zod";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -51,6 +54,12 @@ export interface IStorage {
   // Optimization Events
   getOptimizationEvents(templateId?: string, limit?: number): Promise<OptimizationEvent[]>;
   createOptimizationEvent(event: Omit<OptimizationEvent, 'id' | 'createdAt'>): Promise<OptimizationEvent>;
+  
+  // Video Generations
+  getVideoGeneration(id: string): Promise<VideoGeneration | undefined>;
+  getAllVideoGenerations(provider?: string): Promise<VideoGeneration[]>;
+  createVideoGeneration(generation: z.infer<typeof insertVideoGenerationSchema>): Promise<VideoGeneration>;
+  updateVideoGeneration(id: string, updates: Partial<VideoGeneration>): Promise<VideoGeneration>;
 }
 
 export class MemStorage implements IStorage {
@@ -62,6 +71,7 @@ export class MemStorage implements IStorage {
   private apiConfiguration: ApiConfiguration | undefined;
   private n8nTemplates: Map<string, N8nTemplate>;
   private optimizationEvents: Map<string, OptimizationEvent>;
+  private videoGenerations: Map<string, VideoGeneration>;
 
   constructor() {
     this.users = new Map();
@@ -71,6 +81,7 @@ export class MemStorage implements IStorage {
     this.automationLogs = new Map();
     this.n8nTemplates = new Map();
     this.optimizationEvents = new Map();
+    this.videoGenerations = new Map();
     
     // Initialize default data
     this.initializeDefaultBanditArms();
@@ -349,6 +360,8 @@ export class MemStorage implements IStorage {
         googleCloudBucket: null,
         tiktokAccessToken: null,
         instagramAccessToken: null,
+        mochiApiKey: null,
+        lumaApiKey: null,
         isConfigured: false,
         updatedAt: new Date(),
         ...config
@@ -414,6 +427,45 @@ export class MemStorage implements IStorage {
     };
     this.optimizationEvents.set(id, newEvent);
     return newEvent;
+  }
+
+  // Video Generation methods
+  async getVideoGeneration(id: string): Promise<VideoGeneration | undefined> {
+    return this.videoGenerations.get(id);
+  }
+
+  async getAllVideoGenerations(provider?: string): Promise<VideoGeneration[]> {
+    const allGenerations = Array.from(this.videoGenerations.values());
+    const filteredGenerations = provider 
+      ? allGenerations.filter(gen => gen.provider === provider)
+      : allGenerations;
+    
+    return filteredGenerations
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async createVideoGeneration(generation: z.infer<typeof insertVideoGenerationSchema>): Promise<VideoGeneration> {
+    const id = randomUUID();
+    const newGeneration: VideoGeneration = {
+      ...generation,
+      id,
+      status: generation.status || 'pending',
+      createdAt: new Date(),
+      completedAt: null
+    };
+    this.videoGenerations.set(id, newGeneration);
+    return newGeneration;
+  }
+
+  async updateVideoGeneration(id: string, updates: Partial<VideoGeneration>): Promise<VideoGeneration> {
+    const generation = this.videoGenerations.get(id);
+    if (!generation) {
+      throw new Error(`Video generation not found: ${id}`);
+    }
+    
+    const updated = { ...generation, ...updates };
+    this.videoGenerations.set(id, updated);
+    return updated;
   }
 }
 
