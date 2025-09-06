@@ -75,7 +75,7 @@ export class ProxyRotationManager {
     this.proxyUsageHistory.delete(proxyId);
     
     // Remove from account mappings
-    for (const [accountId, mappedProxyId] of this.accountProxyMapping.entries()) {
+    for (const [accountId, mappedProxyId] of Array.from(this.accountProxyMapping.entries())) {
       if (mappedProxyId === proxyId) {
         this.accountProxyMapping.delete(accountId);
       }
@@ -448,7 +448,7 @@ export class ProxyRotationManager {
   private startHealthMonitoring(): void {
     // Monitor proxy health every 15 minutes
     setInterval(async () => {
-      for (const proxyId of this.proxies.keys()) {
+      for (const proxyId of Array.from(this.proxies.keys())) {
         try {
           await this.testProxy(proxyId);
         } catch (error) {

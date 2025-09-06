@@ -445,8 +445,8 @@ export class AccountHealthMonitor {
   private cleanupOldAlerts(): void {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     
-    for (const [key, alerts] of this.alerts.entries()) {
-      const filteredAlerts = alerts.filter(alert => alert.timestamp > weekAgo);
+    for (const [key, alerts] of Array.from(this.alerts.entries())) {
+      const filteredAlerts = alerts.filter((alert: HealthAlert) => alert.timestamp > weekAgo);
       if (filteredAlerts.length === 0) {
         this.alerts.delete(key);
       } else {
