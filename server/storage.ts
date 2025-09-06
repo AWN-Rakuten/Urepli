@@ -9,7 +9,11 @@ import {
   type N8nTemplate,
   type OptimizationEvent,
   type VideoGeneration,
-  insertVideoGenerationSchema
+  type SocialMediaAccount,
+  type AccountRotationLog,
+  insertVideoGenerationSchema,
+  insertSocialMediaAccountSchema,
+  insertAccountRotationLogSchema
 } from "@shared/schema";
 import { z } from "zod";
 import { randomUUID } from "crypto";
@@ -60,6 +64,18 @@ export interface IStorage {
   getAllVideoGenerations(provider?: string): Promise<VideoGeneration[]>;
   createVideoGeneration(generation: z.infer<typeof insertVideoGenerationSchema>): Promise<VideoGeneration>;
   updateVideoGeneration(id: string, updates: Partial<VideoGeneration>): Promise<VideoGeneration>;
+  
+  // Social Media Accounts
+  getSocialMediaAccounts(platform?: string): Promise<SocialMediaAccount[]>;
+  getActiveSocialMediaAccounts(platform?: string): Promise<SocialMediaAccount[]>;
+  getSocialMediaAccount(id: string): Promise<SocialMediaAccount | undefined>;
+  createSocialMediaAccount(account: z.infer<typeof insertSocialMediaAccountSchema>): Promise<SocialMediaAccount>;
+  updateSocialMediaAccount(id: string, updates: Partial<SocialMediaAccount>): Promise<SocialMediaAccount>;
+  deleteSocialMediaAccount(id: string): Promise<boolean>;
+  
+  // Account Rotation Logs
+  getAccountRotationLogs(accountId?: string, limit?: number): Promise<AccountRotationLog[]>;
+  createAccountRotationLog(log: z.infer<typeof insertAccountRotationLogSchema>): Promise<AccountRotationLog>;
 }
 
 export class MemStorage implements IStorage {
@@ -72,6 +88,8 @@ export class MemStorage implements IStorage {
   private n8nTemplates: Map<string, N8nTemplate>;
   private optimizationEvents: Map<string, OptimizationEvent>;
   private videoGenerations: Map<string, VideoGeneration>;
+  private socialMediaAccounts: Map<string, SocialMediaAccount>;
+  private accountRotationLogs: Map<string, AccountRotationLog>;
 
   constructor() {
     this.users = new Map();
@@ -82,6 +100,8 @@ export class MemStorage implements IStorage {
     this.n8nTemplates = new Map();
     this.optimizationEvents = new Map();
     this.videoGenerations = new Map();
+    this.socialMediaAccounts = new Map();
+    this.accountRotationLogs = new Map();
     
     // No default data - everything comes from real operations
   }
@@ -330,6 +350,80 @@ export class MemStorage implements IStorage {
     const updated = { ...generation, ...updates };
     this.videoGenerations.set(id, updated);
     return updated;
+  }
+
+  // Social Media Accounts methods
+  async getSocialMediaAccounts(platform?: string): Promise<SocialMediaAccount[]> {
+    const allAccounts = Array.from(this.socialMediaAccounts.values());
+    const filteredAccounts = platform 
+      ? allAccounts.filter(account => account.platform === platform)
+      : allAccounts;
+    
+    return filteredAccounts
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async getActiveSocialMediaAccounts(platform?: string): Promise<SocialMediaAccount[]> {
+    const allAccounts = await this.getSocialMediaAccounts(platform);
+    return allAccounts.filter(account => 
+      account.isActive && 
+      account.status === 'active' &&
+      account.errorCount < 3
+    );
+  }
+
+  async getSocialMediaAccount(id: string): Promise<SocialMediaAccount | undefined> {
+    return this.socialMediaAccounts.get(id);
+  }
+
+  async createSocialMediaAccount(accountData: z.infer<typeof insertSocialMediaAccountSchema>): Promise<SocialMediaAccount> {
+    const id = randomUUID();
+    const newAccount: SocialMediaAccount = {
+      ...accountData,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.socialMediaAccounts.set(id, newAccount);
+    return newAccount;
+  }
+
+  async updateSocialMediaAccount(id: string, updates: Partial<SocialMediaAccount>): Promise<SocialMediaAccount> {
+    const account = this.socialMediaAccounts.get(id);
+    if (!account) {
+      throw new Error(`Social media account not found: ${id}`);
+    }
+    
+    const updated = { ...account, ...updates, updatedAt: new Date() };
+    this.socialMediaAccounts.set(id, updated);
+    return updated;
+  }
+
+  async deleteSocialMediaAccount(id: string): Promise<boolean> {
+    return this.socialMediaAccounts.delete(id);
+  }
+
+  // Account Rotation Logs methods
+  async getAccountRotationLogs(accountId?: string, limit = 100): Promise<AccountRotationLog[]> {
+    const allLogs = Array.from(this.accountRotationLogs.values());
+    const filteredLogs = accountId 
+      ? allLogs.filter(log => log.accountId === accountId)
+      : allLogs;
+    
+    return filteredLogs
+      .sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime())
+      .slice(0, limit);
+  }
+
+  async createAccountRotationLog(logData: z.infer<typeof insertAccountRotationLogSchema>): Promise<AccountRotationLog> {
+    const id = randomUUID();
+    const newLog: AccountRotationLog = {
+      ...logData,
+      id,
+      createdAt: new Date()
+    };
+    this.accountRotationLogs.set(id, newLog);
+    return newLog;
   }
 }
 
