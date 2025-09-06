@@ -13,6 +13,8 @@ import { VideoGeneration } from "@/components/VideoGeneration";
 import { AutomationDashboard } from "@/components/AutomationDashboard";
 import { CampaignManager } from "@/components/CampaignManager";
 import { VideoGenerator } from "@/components/VideoGenerator";
+import { AdvancedOptimizationDashboard } from "@/components/AdvancedOptimizationDashboard";
+import { RealTimeAnalyticsDashboard } from "@/components/RealTimeAnalyticsDashboard";
 import { Button } from "@/components/ui/button";
 import { Plus, Play, Settings } from "lucide-react";
 import type { DashboardMetrics, Workflow, BanditArm, Content, AutomationLog, ApiConfiguration } from "@/types";
@@ -147,6 +149,16 @@ export default function Dashboard() {
         {/* Campaign Management */}
         <div className="mb-8">
           <CampaignManager />
+        </div>
+
+        {/* Advanced Optimization Engine */}
+        <div className="mb-8">
+          <AdvancedOptimizationDashboard />
+        </div>
+
+        {/* Real-Time Analytics Dashboard */}
+        <div className="mb-8">
+          <RealTimeAnalyticsDashboard />
         </div>
 
         {/* Content and Logs */}

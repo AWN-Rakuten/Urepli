@@ -18,6 +18,10 @@ import { HumanApprovalWorkflow } from "./services/human-approval-workflow";
 import { MetaAdsService } from "./services/meta-ads-api";
 import { TikTokAdsService } from "./services/tiktok-ads-api";
 import { GeminiVideoGenerator } from "./services/gemini-video-generator";
+import { AdvancedOptimizationEngine } from "./services/advanced-optimization-engine";
+import { AICreativeEngine } from "./services/ai-creative-engine";
+import { WorkflowMarketplace } from "./services/workflow-marketplace";
+import { RealTimeAnalytics } from "./services/real-time-analytics";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -57,6 +61,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   } catch (error) {
     console.log('Gemini Video Generator not configured');
   }
+
+  // Advanced optimization services
+  const optimizationEngine = new AdvancedOptimizationEngine(storage);
+  const creativeEngine = new AICreativeEngine(storage);
+  const workflowMarketplace = new WorkflowMarketplace(storage);
+  const realTimeAnalytics = new RealTimeAnalytics(storage);
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {
@@ -1416,12 +1426,238 @@ URL: ${item.link}
       const providers = {
         meta: metaAdsService?.getProviderInfo() || { available: false },
         tiktok: tiktokAdsService?.getProviderInfo() || { available: false },
-        gemini: geminiVideoGenerator?.getProviderInfo() || { available: false }
+        gemini: geminiVideoGenerator?.getProviderInfo() || { available: false },
+        optimization: optimizationEngine.getProviderInfo(),
+        creative: creativeEngine.getProviderInfo(),
+        marketplace: workflowMarketplace.getProviderInfo(),
+        analytics: realTimeAnalytics.getProviderInfo()
       };
       
       res.json(providers);
     } catch (error) {
       res.status(500).json({ error: `Failed to get provider info: ${error}` });
+    }
+  });
+
+  // Advanced Optimization Routes
+  app.post("/api/optimization/budget", async (req, res) => {
+    try {
+      const { totalBudget, constraints } = req.body;
+      const allocation = await optimizationEngine.optimizeBudgetAllocation(totalBudget, constraints);
+      res.json(allocation);
+    } catch (error) {
+      res.status(500).json({ error: `Budget optimization failed: ${error}` });
+    }
+  });
+
+  app.get("/api/optimization/schedule/:workflowId", async (req, res) => {
+    try {
+      const { workflowId } = req.params;
+      const { targetAudience } = req.query;
+      const schedule = await optimizationEngine.predictOptimalScheduling(workflowId, targetAudience as string);
+      res.json(schedule);
+    } catch (error) {
+      res.status(500).json({ error: `Schedule prediction failed: ${error}` });
+    }
+  });
+
+  app.get("/api/optimization/state", async (req, res) => {
+    try {
+      const state = await optimizationEngine.getOptimizationState();
+      res.json(state);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get optimization state: ${error}` });
+    }
+  });
+
+  app.get("/api/optimization/insights", async (req, res) => {
+    try {
+      const insights = await optimizationEngine.getOptimizationInsights();
+      res.json(insights);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get optimization insights: ${error}` });
+    }
+  });
+
+  app.post("/api/optimization/ensemble/:ensembleId", async (req, res) => {
+    try {
+      const { ensembleId } = req.params;
+      const { performanceData } = req.body;
+      const result = await optimizationEngine.optimizeWorkflowEnsemble(ensembleId, performanceData);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: `Ensemble optimization failed: ${error}` });
+    }
+  });
+
+  // AI Creative Engine Routes
+  app.post("/api/creative/suggestions", async (req, res) => {
+    try {
+      const { contentType, platform, targetAudience, context } = req.body;
+      const suggestions = await creativeEngine.generateCreativeSuggestions(contentType, platform, targetAudience, context);
+      res.json(suggestions);
+    } catch (error) {
+      res.status(500).json({ error: `Creative suggestion generation failed: ${error}` });
+    }
+  });
+
+  app.post("/api/creative/analyze", async (req, res) => {
+    try {
+      const { imageUrl, text } = req.body;
+      const analysis = await creativeEngine.analyzeContent(imageUrl, text);
+      res.json(analysis);
+    } catch (error) {
+      res.status(500).json({ error: `Content analysis failed: ${error}` });
+    }
+  });
+
+  app.post("/api/creative/trends", async (req, res) => {
+    try {
+      const { keywords, platform } = req.body;
+      const trends = await creativeEngine.analyzeTrends(keywords, platform);
+      res.json(trends);
+    } catch (error) {
+      res.status(500).json({ error: `Trend analysis failed: ${error}` });
+    }
+  });
+
+  app.get("/api/creative/suggestions/:type", async (req, res) => {
+    try {
+      const { type } = req.params;
+      const { platform } = req.query;
+      const suggestions = await creativeEngine.getSuggestionsByType(type, platform as string);
+      res.json(suggestions);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get suggestions by type: ${error}` });
+    }
+  });
+
+  // Workflow Marketplace Routes
+  app.get("/api/marketplace/templates", async (req, res) => {
+    try {
+      const { query, category, platform, complexity, minRating } = req.query;
+      const filters = { category, platform, complexity, minRating: minRating ? parseFloat(minRating as string) : undefined };
+      const templates = await workflowMarketplace.searchTemplates(query as string || '', filters);
+      res.json(templates);
+    } catch (error) {
+      res.status(500).json({ error: `Template search failed: ${error}` });
+    }
+  });
+
+  app.get("/api/marketplace/template/:templateId", async (req, res) => {
+    try {
+      const { templateId } = req.params;
+      const template = await workflowMarketplace.getTemplate(templateId);
+      if (!template) {
+        return res.status(404).json({ error: 'Template not found' });
+      }
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get template: ${error}` });
+    }
+  });
+
+  app.post("/api/marketplace/curate", async (req, res) => {
+    try {
+      const { userGoals, industry, experience } = req.body;
+      const recommendations = await workflowMarketplace.curateTemplatesForUser(userGoals, industry, experience);
+      res.json(recommendations);
+    } catch (error) {
+      res.status(500).json({ error: `Template curation failed: ${error}` });
+    }
+  });
+
+  app.post("/api/marketplace/create-custom", async (req, res) => {
+    try {
+      const { requirements, constraints, targetPlatforms } = req.body;
+      const template = await workflowMarketplace.createCustomTemplate(requirements, constraints, targetPlatforms);
+      res.json(template);
+    } catch (error) {
+      res.status(500).json({ error: `Custom template creation failed: ${error}` });
+    }
+  });
+
+  app.get("/api/marketplace/categories", async (req, res) => {
+    try {
+      const categories = await workflowMarketplace.getCategories();
+      res.json(categories);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get categories: ${error}` });
+    }
+  });
+
+  app.get("/api/marketplace/stats", async (req, res) => {
+    try {
+      const stats = await workflowMarketplace.getMarketplaceStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get marketplace stats: ${error}` });
+    }
+  });
+
+  app.get("/api/marketplace/template/:templateId/performance", async (req, res) => {
+    try {
+      const { templateId } = req.params;
+      const { timeRange } = req.query;
+      const analysis = await workflowMarketplace.analyzeTemplatePerformance(templateId, timeRange as string);
+      res.json(analysis);
+    } catch (error) {
+      res.status(500).json({ error: `Template performance analysis failed: ${error}` });
+    }
+  });
+
+  // Real-Time Analytics Routes
+  app.get("/api/analytics/dashboard", async (req, res) => {
+    try {
+      const dashboardData = await realTimeAnalytics.getDashboardData();
+      res.json(dashboardData);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get dashboard data: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/metrics", async (req, res) => {
+    try {
+      const metrics = await realTimeAnalytics.getMetrics();
+      res.json(metrics);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get metrics: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/alerts", async (req, res) => {
+    try {
+      const alerts = await realTimeAnalytics.getAlerts();
+      res.json(alerts);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get alerts: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/insights", async (req, res) => {
+    try {
+      const insights = await realTimeAnalytics.getInsights();
+      res.json(insights);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get insights: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/campaigns/performance", async (req, res) => {
+    try {
+      const performance = await realTimeAnalytics.getCampaignPerformance();
+      res.json(performance);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get campaign performance: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/realtime", async (req, res) => {
+    try {
+      const realtime = await realTimeAnalytics.getRealtimeMetrics();
+      res.json(realtime);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get realtime metrics: ${error}` });
     }
   });
 
