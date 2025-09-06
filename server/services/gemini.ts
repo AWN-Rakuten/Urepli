@@ -47,7 +47,7 @@ Respond with JSON format:
 
     try {
       const response = await this.ai.models.generateContent({
-        model: "gemini-2.5-pro",
+        model: "gemini-2.5-flash",
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -103,7 +103,7 @@ Respond with JSON format:
 
     try {
       const response = await this.ai.models.generateContent({
-        model: "gemini-2.5-pro",
+        model: "gemini-2.5-flash",
         config: {
           responseMimeType: "application/json",
           responseSchema: {

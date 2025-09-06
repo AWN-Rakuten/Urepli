@@ -30,7 +30,7 @@ export class MochiVideoService {
   private apiKey: string;
   private baseUrl = 'https://api.deepinfra.com/v1/inference/genmo/mochi-1-preview';
   private storage: IStorage;
-  private costPerVideo = 0.42; // $0.42 per video based on research
+  private costPerVideo = 0.17; // $0.17 per video based on research
 
   constructor(storage: IStorage, apiKey?: string) {
     this.apiKey = apiKey || process.env.MOCHI_API_KEY || '';
