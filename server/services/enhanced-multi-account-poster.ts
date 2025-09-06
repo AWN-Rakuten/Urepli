@@ -247,7 +247,7 @@ export class EnhancedMultiAccountPoster {
         }
         task.accountId = account.id;
       } else {
-        account = this.accounts.get(task.accountId);
+        account = this.accounts.get(task.accountId) || null;
         if (!account) {
           throw new Error(`Account ${task.accountId} not found`);
         }
@@ -367,7 +367,16 @@ export class EnhancedMultiAccountPoster {
         
         // Force proxy rotation for retry
         if (account) {
-          await this.proxyManager.forceRotation(account.id, proxyStrategy);
+          const retryProxyStrategy: ProxyRotationStrategy = {
+            type: 'health_based',
+            accountId: account.id,
+            platform: task.platform,
+            preferences: {
+              minReliability: 80,
+              maxFailures: 3,
+            },
+          };
+          await this.proxyManager.forceRotation(account.id, retryProxyStrategy);
         }
       } else {
         task.status = 'failed';
