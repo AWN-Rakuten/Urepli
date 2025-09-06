@@ -450,6 +450,7 @@ export class MemStorage implements IStorage {
       ...generation,
       id,
       status: generation.status || 'pending',
+      cost: generation.cost || 0,
       createdAt: new Date(),
       completedAt: null
     };

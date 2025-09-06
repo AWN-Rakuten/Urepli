@@ -11,6 +11,7 @@ import { TTSCacheService } from "./services/tts-cache";
 import { OfferRotatorService } from "./services/offer-rotator";
 import { ProfitBanditService } from "./services/profit-bandit";
 import { ComplianceGuardService } from "./services/compliance-guard";
+import { VideoOrchestrator } from "./services/video-orchestrator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -23,6 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const offerRotator = new OfferRotatorService(storage);
   const profitBandit = new ProfitBanditService(storage);
   const complianceGuard = new ComplianceGuardService(storage);
+  const videoOrchestrator = new VideoOrchestrator(storage);
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {
@@ -989,6 +991,82 @@ URL: ${item.link}
       res.json({ message: "Profit optimization cycle completed" });
     } catch (error) {
       res.status(500).json({ error: "Profit cycle failed" });
+    }
+  });
+
+  // Video Generation endpoints
+  app.get("/api/video/providers", async (_req, res) => {
+    try {
+      const providersInfo = videoOrchestrator.getProviderInfo();
+      const costAnalysis = videoOrchestrator.getCostAnalysis();
+      
+      res.json({
+        providers: providersInfo,
+        costAnalysis
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch provider information" });
+    }
+  });
+
+  app.post("/api/video/generate", async (req, res) => {
+    try {
+      const { prompt, provider, contentId, ...options } = req.body;
+      
+      if (!prompt) {
+        return res.status(400).json({ error: "Prompt is required" });
+      }
+
+      const videoGeneration = await videoOrchestrator.generateVideo({
+        prompt,
+        provider: provider || 'auto',
+        contentId,
+        ...options
+      });
+      
+      res.json(videoGeneration);
+    } catch (error) {
+      console.error('Video generation error:', error);
+      res.status(500).json({ 
+        error: "Failed to generate video",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.get("/api/video/generations", async (req, res) => {
+    try {
+      const provider = req.query.provider as string;
+      const generations = provider 
+        ? await videoOrchestrator.getGenerationsByProvider(provider as any)
+        : await videoOrchestrator.getAllGenerations();
+      
+      res.json(generations);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch video generations" });
+    }
+  });
+
+  app.get("/api/video/generations/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const generation = await videoOrchestrator.getGenerationStatus(id);
+      
+      res.json(generation);
+    } catch (error) {
+      res.status(404).json({ 
+        error: "Video generation not found",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
+  app.get("/api/video/cost-analysis", async (_req, res) => {
+    try {
+      const analysis = videoOrchestrator.getCostAnalysis();
+      res.json(analysis);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch cost analysis" });
     }
   });
 
