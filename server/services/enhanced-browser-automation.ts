@@ -1,5 +1,5 @@
 import { chromium, firefox, webkit, Browser, Page, BrowserContext } from 'playwright';
-import { UserAgent } from 'user-agents';
+import UserAgent from 'user-agents';
 
 export interface BrowserOptions {
   headless?: boolean;

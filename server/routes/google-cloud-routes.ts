@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { GoogleCloudAutomation } from '../services/google-cloud-automation';
 import { GoogleCloudWorkflows } from '../services/google-cloud-workflows';
 import { GoogleCloudAffiliateTracker } from '../services/google-cloud-affiliate-tracker';
+import { GoogleCloudROIMonitor } from '../services/google-cloud-roi-monitor';
 
 const router = Router();
 
@@ -9,6 +10,7 @@ const router = Router();
 const cloudAutomation = new GoogleCloudAutomation();
 const cloudWorkflows = new GoogleCloudWorkflows();
 const affiliateTracker = new GoogleCloudAffiliateTracker();
+const roiMonitor = new GoogleCloudROIMonitor();
 
 /**
  * Video Upload and Management
@@ -415,6 +417,78 @@ router.get('/monitoring/system-health', async (req, res) => {
   } catch (error) {
     console.error('Error getting system health:', error);
     res.status(500).json({ error: 'Failed to get system health' });
+  }
+});
+
+/**
+ * ROI Monitoring and Alerts
+ */
+router.get('/roi/metrics', async (req, res) => {
+  try {
+    const { timeframe = 'day' } = req.query;
+    const metrics = await roiMonitor.getPerformanceMetrics(timeframe as 'hour' | 'day' | 'week' | 'month');
+    
+    res.json({
+      success: true,
+      metrics,
+    });
+  } catch (error) {
+    console.error('Error getting ROI metrics:', error);
+    res.status(500).json({ error: 'Failed to get ROI metrics' });
+  }
+});
+
+router.get('/roi/alerts', async (req, res) => {
+  try {
+    const alerts = await roiMonitor.getActiveAlerts();
+    
+    res.json({
+      success: true,
+      alerts,
+      totalActive: alerts.length,
+    });
+  } catch (error) {
+    console.error('Error getting ROI alerts:', error);
+    res.status(500).json({ error: 'Failed to get ROI alerts' });
+  }
+});
+
+router.get('/roi/recommendations', async (req, res) => {
+  try {
+    const recommendations = await roiMonitor.getOptimizationRecommendations();
+    
+    res.json({
+      success: true,
+      recommendations,
+      totalRecommendations: recommendations.length,
+    });
+  } catch (error) {
+    console.error('Error getting optimization recommendations:', error);
+    res.status(500).json({ error: 'Failed to get optimization recommendations' });
+  }
+});
+
+router.post('/roi/implement-optimization', async (req, res) => {
+  try {
+    const { recommendationId } = req.body;
+    
+    if (!recommendationId) {
+      return res.status(400).json({ error: 'Recommendation ID is required' });
+    }
+
+    const success = await roiMonitor.implementOptimization(recommendationId);
+    
+    if (success) {
+      res.json({
+        success: true,
+        message: 'Optimization implemented successfully',
+      });
+    } else {
+      res.status(500).json({ error: 'Failed to implement optimization' });
+    }
+  } catch (error) {
+    console.error('Error implementing optimization:', error);
+    res.status(500).json({ error: 'Failed to implement optimization' });
   }
 });
 
