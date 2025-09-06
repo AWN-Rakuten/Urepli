@@ -1,9 +1,10 @@
-import { Bot, BarChart3, Workflow, Video, TrendingUp, Settings } from "lucide-react";
+import { Bot, BarChart3, Workflow, Video, TrendingUp, Settings, Clapperboard } from "lucide-react";
 
 const navItems = [
   { id: "overview", icon: BarChart3, label: "Overview", active: true },
   { id: "workflows", icon: Workflow, label: "Workflows" },
   { id: "content", icon: Video, label: "Content Library" },
+  { id: "video-generation", icon: Clapperboard, label: "Video Generation" },
   { id: "performance", icon: TrendingUp, label: "Performance" },
   { id: "settings", icon: Settings, label: "Configuration" },
 ];

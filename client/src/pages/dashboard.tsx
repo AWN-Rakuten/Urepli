@@ -9,6 +9,7 @@ import AutomationLogs from "@/components/AutomationLogs";
 import ConfigurationModal from "@/components/ConfigurationModal";
 import N8nTemplates from "@/components/N8nTemplates";
 import RSSStreamViewer from "@/components/RSSStreamViewer";
+import { VideoGeneration } from "@/components/VideoGeneration";
 import { Button } from "@/components/ui/button";
 import { Plus, Play, Settings } from "lucide-react";
 import type { DashboardMetrics, Workflow, BanditArm, Content, AutomationLog, ApiConfiguration } from "@/types";
@@ -123,6 +124,11 @@ export default function Dashboard() {
         {/* N8n Templates Section */}
         <div className="mb-8">
           <N8nTemplates />
+        </div>
+
+        {/* Video Generation Section */}
+        <div className="mb-8">
+          <VideoGeneration />
         </div>
 
         {/* Content and Logs */}
