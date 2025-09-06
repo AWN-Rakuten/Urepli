@@ -143,10 +143,72 @@ export const insertOptimizationEventSchema = createInsertSchema(optimizationEven
   createdAt: true,
 });
 
+export const socialMediaAccounts = pgTable("social_media_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Display name like "Main TikTok", "Backup Instagram"
+  platform: text("platform").notNull(), // 'tiktok', 'instagram', 'youtube'
+  username: text("username").notNull(),
+  accountType: text("account_type").notNull().default("official"), // 'official', 'unofficial'
+  
+  // Official API credentials
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  businessAccountId: text("business_account_id"),
+  advertiserAccountId: text("advertiser_account_id"),
+  
+  // Unofficial automation data (encrypted cookies/sessions)
+  automationData: jsonb("automation_data"), // Cookies, session data, etc.
+  
+  // Account status and health
+  status: text("status").notNull().default("active"), // 'active', 'suspended', 'error', 'rate_limited'
+  lastUsed: timestamp("last_used"),
+  lastError: text("last_error"),
+  errorCount: integer("error_count").default(0),
+  
+  // Performance metrics
+  dailyPostCount: integer("daily_post_count").default(0),
+  totalPosts: integer("total_posts").default(0),
+  lastPostDate: timestamp("last_post_date"),
+  
+  // Automation settings
+  isActive: boolean("is_active").default(true),
+  postingPriority: integer("posting_priority").default(1), // 1-10 priority for account rotation
+  maxDailyPosts: integer("max_daily_posts").default(5),
+  
+  // Metadata
+  metadata: jsonb("metadata"), // Additional platform-specific data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const accountRotationLogs = pgTable("account_rotation_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  accountId: varchar("account_id").notNull(),
+  contentId: varchar("content_id"),
+  platform: text("platform").notNull(),
+  action: text("action").notNull(), // 'post_attempt', 'post_success', 'post_failure', 'rate_limit'
+  result: text("result").notNull(), // 'success', 'failure', 'skipped'
+  errorMessage: text("error_message"),
+  rotationReason: text("rotation_reason"), // 'scheduled', 'rate_limited', 'error', 'priority'
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const insertVideoGenerationSchema = createInsertSchema(videoGenerations).omit({
   id: true,
   createdAt: true,
   completedAt: true,
+});
+
+export const insertSocialMediaAccountSchema = createInsertSchema(socialMediaAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAccountRotationLogSchema = createInsertSchema(accountRotationLogs).omit({
+  id: true,
+  createdAt: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -159,6 +221,8 @@ export type ApiConfiguration = typeof apiConfigurations.$inferSelect;
 export type N8nTemplate = typeof n8nTemplates.$inferSelect;
 export type OptimizationEvent = typeof optimizationEvents.$inferSelect;
 export type VideoGeneration = typeof videoGenerations.$inferSelect;
+export type SocialMediaAccount = typeof socialMediaAccounts.$inferSelect;
+export type AccountRotationLog = typeof accountRotationLogs.$inferSelect;
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
