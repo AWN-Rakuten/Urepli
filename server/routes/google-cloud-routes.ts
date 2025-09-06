@@ -382,7 +382,7 @@ router.post('/automation/bulk-process', async (req, res) => {
 router.get('/monitoring/active-workflows', async (req, res) => {
   try {
     // This would get active workflows from Firestore in a real implementation
-    const activeWorkflows = []; // Placeholder
+    const activeWorkflows: any[] = []; // Placeholder
     
     res.json({
       success: true,

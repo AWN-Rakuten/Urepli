@@ -529,9 +529,10 @@ export class AIContentOptimizer {
 
   private containsEmojis(text: string): boolean {
     // Simplified emoji detection for broader compatibility
-    const emojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{2600}-\u{26FF}]/g;
+    const emojiRegex = /[\u1F600-\u1F64F]|[\u1F300-\u1F5FF]|[\u1F680-\u1F6FF]|[\u2600-\u26FF]/g;
     return emojiRegex.test(text);
   }
+
 
   private getMaxPostsPerDay(platform: string): number {
     const limits: Record<string, number> = {

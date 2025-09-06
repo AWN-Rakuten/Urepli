@@ -422,7 +422,7 @@ export class GoogleCloudAffiliateTracker {
           const affiliateLink = await this.generateTrackingLink(
             postId,
             platform,
-            pattern.linkType,
+            pattern.linkType as keyof typeof this.AFFILIATE_PROVIDERS,
             campaignId
           );
           
