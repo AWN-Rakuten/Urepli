@@ -25,6 +25,7 @@ import { RealTimeAnalytics } from "./services/real-time-analytics";
 import { registerSocialAccountRoutes } from "./routes/social-accounts";
 import { MultiAccountPoster } from "./services/multi-account-poster";
 import googleCloudRoutes from "./routes/google-cloud-routes";
+import n8nJapaneseRoutes from "./routes/n8n-japanese-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -76,6 +77,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Google Cloud automation routes
   app.use('/api/gcloud', googleCloudRoutes);
+  
+  // Register Japanese n8n workflow routes
+  app.use('/api/n8n-japanese', n8nJapaneseRoutes);
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
