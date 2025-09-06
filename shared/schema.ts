@@ -228,3 +228,97 @@ export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
 });
+
+// Affiliate tracking tables
+export const affiliatePrograms = pgTable("affiliate_programs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  company: text("company").notNull(),
+  description: text("description"),
+  commissionRate: text("commission_rate").notNull(),
+  commissionType: text("commission_type").notNull(),
+  category: text("category").notNull(),
+  targetAudience: jsonb("target_audience"),
+  platform: jsonb("platform"),
+  trackingDomain: text("tracking_domain").notNull(),
+  apiEndpoint: text("api_endpoint"),
+  requiresApproval: boolean("requires_approval").default(false),
+  paymentMinimum: integer("payment_minimum").default(0),
+  paymentCurrency: text("payment_currency").default('JPY'),
+  averageEPC: integer("average_epc").default(0),
+  conversionRate: real("conversion_rate").default(0),
+  cookieDuration: integer("cookie_duration").default(30),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const affiliateLinks = pgTable("affiliate_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  programId: varchar("program_id").references(() => affiliatePrograms.id).notNull(),
+  originalUrl: text("original_url").notNull(),
+  affiliateUrl: text("affiliate_url").notNull(),
+  shortUrl: text("short_url"),
+  campaignName: text("campaign_name"),
+  customParameters: jsonb("custom_parameters"),
+  clicks: integer("clicks").default(0),
+  conversions: integer("conversions").default(0),
+  revenue: real("revenue").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+});
+
+export const affiliateSales = pgTable("affiliate_sales", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  linkId: varchar("link_id").references(() => affiliateLinks.id).notNull(),
+  programId: varchar("program_id").references(() => affiliatePrograms.id).notNull(),
+  saleAmount: real("sale_amount").notNull(),
+  commission: real("commission").notNull(),
+  currency: text("currency").default('JPY'),
+  status: text("status").default('pending'),
+  customerInfo: jsonb("customer_info"),
+  saleDate: timestamp("sale_date").notNull(),
+  confirmDate: timestamp("confirm_date"),
+  source: text("source").notNull(),
+  contentId: varchar("content_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const geminiSeeds = pgTable("gemini_seeds", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  category: text("category").notNull(),
+  seedValue: text("seed_value").notNull(),
+  temperature: real("temperature").default(0.7),
+  maxTokens: integer("max_tokens").default(1000),
+  topP: real("top_p").default(0.9),
+  topK: integer("top_k").default(40),
+  isActive: boolean("is_active").default(true),
+  performanceScore: real("performance_score").default(70),
+  useCount: integer("use_count").default(0),
+  successRate: real("success_rate").default(0),
+  avgResponseTime: real("avg_response_time").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  lastUsed: timestamp("last_used"),
+  lastOptimized: timestamp("last_optimized"),
+});
+
+export const oauthStates = pgTable("oauth_states", {
+  state: varchar("state").primaryKey(),
+  platform: text("platform").notNull(),
+  userId: varchar("user_id").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AffiliateProgram = typeof affiliatePrograms.$inferSelect;
+export type InsertAffiliateProgram = typeof affiliatePrograms.$inferInsert;
+export type AffiliateLink = typeof affiliateLinks.$inferSelect;
+export type InsertAffiliateLink = typeof affiliateLinks.$inferInsert;
+export type AffiliateSale = typeof affiliateSales.$inferSelect;
+export type InsertAffiliateSale = typeof affiliateSales.$inferInsert;
+export type GeminiSeed = typeof geminiSeeds.$inferSelect;
+export type InsertGeminiSeed = typeof geminiSeeds.$inferInsert;
+export type OAuthState = typeof oauthStates.$inferSelect;
+export type InsertOAuthState = typeof oauthStates.$inferInsert;

@@ -26,6 +26,8 @@ import { registerSocialAccountRoutes } from "./routes/social-accounts";
 import { MultiAccountPoster } from "./services/multi-account-poster";
 import googleCloudRoutes from "./routes/google-cloud-routes";
 import n8nJapaneseRoutes from "./routes/n8n-japanese-routes";
+import affiliateRoutes from "./routes/affiliate-routes";
+import socialMediaRoutes from "./routes/social-media-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -80,6 +82,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Japanese n8n workflow routes
   app.use('/api/n8n-japanese', n8nJapaneseRoutes);
+  
+  // Register affiliate tracking routes
+  app.use('/api/affiliate', affiliateRoutes);
+  
+  // Register social media management routes
+  app.use('/api/social', socialMediaRoutes);
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
