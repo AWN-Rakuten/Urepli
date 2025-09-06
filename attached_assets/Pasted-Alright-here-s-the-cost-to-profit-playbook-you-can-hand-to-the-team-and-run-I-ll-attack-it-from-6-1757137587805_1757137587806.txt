@@ -1,0 +1,309 @@
+Alright—here’s the “cost-to-profit” playbook you can hand to the team and run. I’ll attack it from 6 perspectives (production, distribution/ads, funnel, learning/ops, partnerships, and risk/compliance), then give you a complete roadmap that’s realistic to execute and hard to beat.
+
+
+---
+
+1) Production costs (make more, spend less)
+
+Goal: 10 streams × 4–6 posts/day each without hiring an editor army.
+
+Levers & tactics
+
+One-time design → infinite reuse:
+
+Lock 6–8 FFmpeg templates (9:16, lower-thirds, captions, zoom/pan macro).
+
+Keep all variable parts in JSON (hook, bullets, twist, cta, color_theme).
+
+
+Voice cost control:
+
+Use Google TTS (ja-JP Wavenet) with text chunking + caching. Cache identical lines (e.g., “詳細はプロフィールへ”) to GCS and re-use WAVs.
+
+Deduplicate scripts across streams (e.g., travel & hacks may share “期間限定/注意点” phrasing).
+
+
+Media cost:
+
+Cache b-roll per stream keyword (e.g., “スマホ 割引”, “旅 夕日”), rotate via a short list before calling any API again.
+
+Favor stills + motion (Ken Burns) when b-roll quota is low.
+
+
+Throughput hacks:
+
+Parallelize: synth voice and fetch b-roll while Gemini computes script variants.
+
+Fail-open: if b-roll fetch fails, render a solid background with brand gradient + emoji icon pack.
+
+
+
+What to implement now
+
+Add a small WAV/JSON cache layer (GCS key = SHA1 of text + voiceName).
+
+Add --max-renders-per-min on Cloud Run via queue to avoid CPU overspend.
+
+Precompile common phrases (CTA, disclaimers) into pre-baked WAVs.
+
+
+
+---
+
+2) Distribution & ads (reduce spend per qualified click)
+
+Goal: More qualified traffic at lower cost.
+
+Levers & tactics
+
+Platform order: Start with TikTok (fast short-term ROI) then Instagram Reels; use LinkedIn only for career/finance streams.
+
+Creative economics: 80/20 rule—80% output are fast variants (change hook/first 3s/subtitle color), 20% are new layouts.
+
+Dayparting: Auto-boost windows that historically return better profit (e.g., evenings for MNP, lunch for food).
+
+Frequency caps (paid): cap impressions per arm/day to protect EPC.
+
+Retargeting: lightweight—pixel your LP, retarget only cart-intents (e.g., clicked → 60s+ dwell on LP), not all viewers.
+
+Organic lift: Pin best performing variants; attach “value-first” captions (benefit + micro-proof).
+
+
+What to implement now
+
+In bandit context, pass {hour, weekday}; maintain per-slot weights.
+
+Add budget guardrail per platform/day; halt if (spend – revenue) < –¥X.
+
+
+
+---
+
+3) Funnel & landing page (maximize conversion from clicks you already paid for)
+
+Goal: +20–40% conversion without increasing ad spend.
+
+Levers & tactics
+
+Offer rotation at edge: Always link to your LP (/offers/<stream>), not direct merchant deep link. Rotate top 3 offers server-side by EPC and eligibility (e.g., MNP credit check hints).
+
+Pre-qual quiz (≤3 taps): “Carrier?”, “Budget?”, “iPhone/Android?” → personalize cards and disclosure.
+
+Speed: 80+ Lighthouse mobile—inline CSS above the fold, preconnect all affiliate CDNs.
+
+Trust microcopy: “#PR #広告 / 出典: … / 更新: <時刻> / 申込条件あり” above the fold reduces drop-off.
+
+A/B LP sections via GrowthBook flags: hero order, “why now” block, comparison table density.
+
+
+What to implement now
+
+Add server-side EPC table (per offer) fed by affiliate postbacks; rotate offers without changing captions.
+
+Push LP variant (A/B) from GrowthBook along with the video arm so analysis lines up.
+
+
+
+---
+
+4) Learning & ops (learn faster than competitors)
+
+Goal: A closed loop that reallocates attention/budget to profit, not vanity metrics.
+
+Levers & tactics
+
+Reward = profit, not CTR/retention.
+
+profit = affiliate_revenue(¥) − ad_spend(¥) per arm over the last 30–180 minutes.
+
+Feed profit to MABWiser (Thompson Sampling) → GrowthBook weights every 30 minutes.
+
+
+Cold-start policy: guarantee N impressions to new arms, then allow pruning.
+
+Exploration budget: reserve 10–20% to test new hooks/templates daily.
+
+Template memory: Tag every hook/template with features (e.g., “数値入り/疑問/限定訴求/絵文字”) and let the bandit learn which features drive profit by stream & hour.
+
+Ops costs:
+
+Auto-scale Cloud Run min_instances=0, concurrency=80; keep render ≤18s p95.
+
+Batch TTS jobs (100 text chunks → one API call sequence) outside peak to exploit free tier better.
+
+
+
+What to implement now
+
+Use the n8n workflows (you have JSON) to compute profit, call /learn, update GrowthBook.
+
+Add feature logging per arm into BigQuery (hook_type, subtitle_style, bg_theme) to enable contextual learning later.
+
+
+
+---
+
+5) Partnerships & payouts (get paid more for the same traffic)
+
+Goal: Lift EPC and payment reliability.
+
+Levers & tactics
+
+Private bumps: After 50–100 qualified conversions, ask A8/ValueCommerce/Rakuten managers for private rates or exclusive landing pages; these can 1.2–1.5× EPC.
+
+Exclusive codes: Unique code tracked to you improves attribution and sometimes boosts payout tier.
+
+Diversify merchants: Keep at least 2 merchants per offer class (e.g., MNP: Rakuten/LINEMO/UQ). Auto-fallback if one program throttles.
+
+Payment terms: Prefer monthly payouts; avoid programs with long validation uncertainty.
+
+Compliance win-wins: Propose co-branded pages that very clearly state conditions → higher approval & fewer clawbacks.
+
+
+What to implement now
+
+Add a “payout-bump trigger” in n8n: when 30d EPC > ¥X and conversions > Y, send a templated email to AM with performance proof and proposed bump tiers.
+
+
+
+---
+
+6) Risk & compliance (hidden cost killer)
+
+Goal: 0 bans, 0 chargebacks, 0 unpaid conversions.
+
+Levers & tactics
+
+Caption policy checks (Gemini): forbidden claims, guaranteed outcomes, sensitive categories.
+
+Always include #PR #広告 when an affiliate link is present & “出典: <domain>”.
+
+Ad policy lint: a pre-publish agent flags risky hooks (comparative/superlative without proof, financing terms).
+
+Traffic quality: cut any traffic sources with high reversal rates (continuous monitoring).
+
+Offer shelf-life: auto-unpublish videos whose core claim (e.g., “今月限定”) dated-out.
+
+
+What to implement now
+
+Add a ComplianceGuard agent node before publish; if fail → regenerate script or downrank arm for 24h.
+
+
+
+---
+
+Unit-economics “north star” (simple & rigorous)
+
+Profit/arm/window = ΣPayout_yen − ΣAdSpend_yen
+
+EPC (earnings per click) = ΣPayout_yen / Clicks
+
+Break-even CPC = EPC × CVR (or just EPC if click→conversion is measured end-to-end)
+
+Keep only arms with p95 profit ≥ 0 over last K windows; aggressively prune negative p95.
+
+
+
+---
+
+Complete roadmap (fast to execute, hard to catch)
+
+Day 0–2 (foundation)
+
+Lock templates (6–8). Add JP fonts.
+
+Wire Google TTS + caching.
+
+Render & Orchestrator live on Cloud Run; Make/n8n publish works to at least one platform.
+
+Streams config (10), 2–3 RSS sources each; dedup/rank step done.
+
+LP v1 with server-side offer rotation & quiz (3 taps).
+
+
+Exit criteria: 10 streams can each produce 1–2 posts end-to-end on demand.
+
+Day 3–7 (learning loop + first paid test)
+
+Turn on PostHog + BigQuery events.
+
+Deploy bandit microservice (MABWiser) + n8n 30-min cron updating GrowthBook.
+
+Paid test: TikTok ¥70k / IG ¥30k across 3–6 arms.
+
+Guardrails: per-platform cap and stop-loss per arm.
+
+
+Exit criteria: automation reweights to profit within a day; LP quiz raises CVR.
+
+Week 2–3 (scale the ROI gap)
+
+Expand to 4–6 posts/day/stream (40–60 total).
+
+Add feature tags to hooks/templates; begin contextual bandit (hour/weekday + features).
+
+Negotiate private bumps for the top 2 merchants per stream; ship co-branded LP variants.
+
+
+Exit criteria: EPC up 15–30%; profit/day stable with higher volume.
+
+Month 1–2 (moat)
+
+Add Ray RLlib or Vowpal Wabbit contextual bandits once data is richer (optional).
+
+Introduce creative regeneration agent: if arm underperforms 3 windows, it rewrites first 3 seconds & subtitle style automatically.
+
+Launch “Affiliate SLA monitor” (clawbacks, validation times, EPC drift) → auto-downrank risky offers.
+
+
+Exit criteria: fully self-optimizing; manual ops limited to new offer intake and merchant deals.
+
+
+---
+
+“Ingenious but simple” moves you can do immediately
+
+1. WAV caching + phrase bank (CTA/PR/source) → cuts TTS time/cost ~30–40%.
+
+
+2. Server-side offer rotator using live EPC → instant EPC lift without touching creative.
+
+
+3. Profit-only bandit every 30 minutes → drops spend on losers automatically.
+
+
+4. Three-tap pre-qual quiz on LP → CVR and approval rates jump, fewer reversals.
+
+
+5. AM bump triggers with automated performance email → EPC up without more traffic.
+
+
+6. ComplianceGuard + shelf-life TTL → fewer policy incidents, less wasted spend on expired claims.
+
+
+
+
+---
+
+Concrete “do this now” checklist
+
+[ ] Enable Google TTS; set VOICE_ENGINE=gcloud, GCLOUD_TTS_VOICE=ja-JP-Wavenet-F.
+
+[ ] Add TTS & b-roll cache keyed by hash; store in GCS.
+
+[ ] Ship LP quiz + server-side offer rotator (reads EPC from BigQuery).
+
+[ ] Turn on n8n bandit cron (you have the JSON); feed profit; push weights to GrowthBook.
+
+[ ] Set platform caps and arm stop-loss in n8n.
+
+[ ] Create AM bump trigger workflow with templated email + performance screenshots.
+
+[ ] Add ComplianceGuard check pre-publish; regenerate risky hooks automatically.
+
+[ ] Schedule a post expiry task for “今月限定/今週限定” claims.
+
+
+If you want, I can fold these into your existing Canvas FastAPI and n8n flows (ready-to-paste code snippets for the offer rotator, TTS cache, and ComplianceGuard prompt) so your junior can flip each switch today.
+

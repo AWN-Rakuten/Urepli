@@ -7,6 +7,10 @@ import { BanditAlgorithmService } from "./services/bandit";
 import { N8nTemplateService } from "./services/n8n-template";
 import { ContentAutomationService } from "./services/content-automation-simple";
 import { RSSIngestionService } from "./services/rss-ingestion";
+import { TTSCacheService } from "./services/tts-cache";
+import { OfferRotatorService } from "./services/offer-rotator";
+import { ProfitBanditService } from "./services/profit-bandit";
+import { ComplianceGuardService } from "./services/compliance-guard";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -15,6 +19,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const n8nService = new N8nTemplateService();
   const contentAutomation = new ContentAutomationService(storage);
   const rssService = new RSSIngestionService(storage);
+  const ttsCache = new TTSCacheService();
+  const offerRotator = new OfferRotatorService(storage);
+  const profitBandit = new ProfitBanditService(storage);
+  const complianceGuard = new ComplianceGuardService(storage);
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {
@@ -788,6 +796,199 @@ URL: ${item.link}
       }
     } catch (error) {
       res.status(500).json({ error: "Failed to execute workflow" });
+    }
+  });
+
+  // Real TTS caching endpoints
+  app.post("/api/tts/generate", async (req, res) => {
+    try {
+      const { text, voice = "ja-JP-Wavenet-F", audioFormat = "mp3", speed = 1.0, pitch = 0 } = req.body;
+      const audioPath = await ttsCache.generateSpeech({ text, voice, audioFormat, speed, pitch });
+      res.json({ audioPath, cached: true });
+    } catch (error) {
+      res.status(500).json({ error: "TTS generation failed" });
+    }
+  });
+
+  app.get("/api/tts/stats", async (_req, res) => {
+    try {
+      const stats = ttsCache.getCacheStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get TTS stats" });
+    }
+  });
+
+  app.post("/api/tts/precache", async (_req, res) => {
+    try {
+      await ttsCache.preCacheCommonPhrases();
+      res.json({ message: "Common phrases pre-cached successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Pre-caching failed" });
+    }
+  });
+
+  // Offer rotation and EPC optimization
+  app.get("/api/offers/:streamKey", async (req, res) => {
+    try {
+      const { streamKey } = req.params;
+      const quizAnswers = req.query as any;
+      const offer = offerRotator.getTopOfferForStream(streamKey, quizAnswers);
+      
+      if (!offer) {
+        return res.status(404).json({ error: "No offers available for stream" });
+      }
+
+      res.json(offer);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get offer" });
+    }
+  });
+
+  app.post("/api/offers/:offerId/performance", async (req, res) => {
+    try {
+      const { offerId } = req.params;
+      const { clicks, conversions, revenue, cost } = req.body;
+      
+      await offerRotator.updateOfferPerformance(offerId, clicks, conversions, revenue, cost);
+      res.json({ message: "Offer performance updated" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update offer performance" });
+    }
+  });
+
+  app.post("/api/affiliate/postback", async (req, res) => {
+    try {
+      await offerRotator.handleAffiliatePostback(req.body);
+      res.json({ message: "Postback processed" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to process postback" });
+    }
+  });
+
+  app.get("/api/offers/reports/:streamKey", async (req, res) => {
+    try {
+      const { streamKey } = req.params;
+      const report = offerRotator.getStreamPerformanceReport(streamKey);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get performance report" });
+    }
+  });
+
+  // Profit-based bandit optimization
+  app.get("/api/bandit/profit/arms", async (_req, res) => {
+    try {
+      const optimalArms = profitBandit.selectOptimalArms(20);
+      res.json(optimalArms);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get optimal arms" });
+    }
+  });
+
+  app.post("/api/bandit/profit/update", async (req, res) => {
+    try {
+      const { armId, revenue, adSpend, clicks = 1, conversions = 0 } = req.body;
+      await profitBandit.updateArmProfit(armId, revenue, adSpend, clicks, conversions);
+      res.json({ message: "Arm profit updated" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update arm profit" });
+    }
+  });
+
+  app.post("/api/bandit/profit/rebalance", async (_req, res) => {
+    try {
+      await profitBandit.rebalanceAllocations();
+      res.json({ message: "Allocations rebalanced based on profit" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to rebalance allocations" });
+    }
+  });
+
+  app.get("/api/bandit/profit/report", async (req, res) => {
+    try {
+      const { hours = "24" } = req.query;
+      const report = profitBandit.getProfitReport(parseInt(hours as string));
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get profit report" });
+    }
+  });
+
+  app.post("/api/bandit/profit/prune", async (_req, res) => {
+    try {
+      await profitBandit.pruneNegativeArms();
+      res.json({ message: "Negative arms pruned successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to prune arms" });
+    }
+  });
+
+  // Compliance Guard
+  app.post("/api/compliance/check", async (req, res) => {
+    try {
+      const content = req.body;
+      const result = await complianceGuard.checkCompliance(content);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: "Compliance check failed" });
+    }
+  });
+
+  app.post("/api/compliance/fix", async (req, res) => {
+    try {
+      const content = req.body;
+      const fixedContent = await complianceGuard.autoFixContent(content);
+      res.json(fixedContent);
+    } catch (error) {
+      res.status(500).json({ error: "Auto-fix failed" });
+    }
+  });
+
+  app.post("/api/compliance/regenerate", async (req, res) => {
+    try {
+      const content = req.body;
+      const regeneratedContent = await complianceGuard.regenerateNonCompliantContent(content);
+      res.json(regeneratedContent);
+    } catch (error) {
+      res.status(500).json({ error: "Content regeneration failed" });
+    }
+  });
+
+  app.get("/api/compliance/stats", async (_req, res) => {
+    try {
+      const stats = complianceGuard.getComplianceStats();
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get compliance stats" });
+    }
+  });
+
+  // AM bump trigger automation
+  app.post("/api/affiliate/check-bump-eligibility", async (_req, res) => {
+    try {
+      const eligibleOffers = await offerRotator.checkAMBumpEligibility();
+      res.json({ eligibleOffers, count: eligibleOffers.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check bump eligibility" });
+    }
+  });
+
+  // Real profit optimization cycle (30-minute windows)
+  app.post("/api/profit/cycle", async (_req, res) => {
+    try {
+      // Add profit window
+      await profitBandit.addProfitWindow();
+      
+      // Rebalance allocations
+      await profitBandit.rebalanceAllocations();
+      
+      // Prune negative performers
+      await profitBandit.pruneNegativeArms();
+      
+      res.json({ message: "Profit optimization cycle completed" });
+    } catch (error) {
+      res.status(500).json({ error: "Profit cycle failed" });
     }
   });
 
