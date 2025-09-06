@@ -15,6 +15,9 @@ import { VideoOrchestrator } from "./services/video-orchestrator";
 import { AutomationPipeline } from "./services/automation-pipeline";
 import { AdSpendManager } from "./services/ad-spend-manager";
 import { HumanApprovalWorkflow } from "./services/human-approval-workflow";
+import { MetaAdsService } from "./services/meta-ads-api";
+import { TikTokAdsService } from "./services/tiktok-ads-api";
+import { GeminiVideoGenerator } from "./services/gemini-video-generator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -31,6 +34,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const automationPipeline = new AutomationPipeline(storage);
   const adSpendManager = new AdSpendManager(storage);
   const approvalWorkflow = new HumanApprovalWorkflow(storage);
+  
+  // Campaign management services
+  let metaAdsService: MetaAdsService | null = null;
+  let tiktokAdsService: TikTokAdsService | null = null;
+  let geminiVideoGenerator: GeminiVideoGenerator | null = null;
+  
+  try {
+    metaAdsService = new MetaAdsService(storage);
+  } catch (error) {
+    console.log('Meta Ads API not configured');
+  }
+  
+  try {
+    tiktokAdsService = new TikTokAdsService(storage);
+  } catch (error) {
+    console.log('TikTok Ads API not configured');
+  }
+  
+  try {
+    geminiVideoGenerator = new GeminiVideoGenerator(storage);
+  } catch (error) {
+    console.log('Gemini Video Generator not configured');
+  }
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {
@@ -1262,6 +1288,140 @@ URL: ${item.link}
       res.json(stats);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch approval stats" });
+    }
+  });
+
+  // Campaign Management Routes
+  app.post("/api/campaigns/create", async (req, res) => {
+    try {
+      const { platform, config, videoUrl, contentId } = req.body;
+      
+      if (platform === 'meta' && metaAdsService) {
+        const result = await metaAdsService.createCampaign(config, videoUrl, contentId);
+        res.json(result);
+      } else if (platform === 'tiktok' && tiktokAdsService) {
+        const result = await tiktokAdsService.createCampaign(config, videoUrl, contentId);
+        res.json(result);
+      } else {
+        res.status(400).json({ error: `${platform} campaign service not available` });
+      }
+    } catch (error) {
+      res.status(500).json({ error: `Campaign creation failed: ${error}` });
+    }
+  });
+
+  app.get("/api/campaigns/active", async (req, res) => {
+    try {
+      const campaigns = [];
+      
+      if (metaAdsService) {
+        const metaCampaigns = await metaAdsService.getActiveCampaigns();
+        campaigns.push(...metaCampaigns.map(c => ({ ...c, platform: 'meta' })));
+      }
+      
+      if (tiktokAdsService) {
+        const tiktokCampaigns = await tiktokAdsService.getActiveCampaigns();
+        campaigns.push(...tiktokCampaigns.map(c => ({ ...c, platform: 'tiktok' })));
+      }
+      
+      res.json(campaigns);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to fetch campaigns: ${error}` });
+    }
+  });
+
+  app.post("/api/campaigns/:id/optimize", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { platform, rules } = req.body;
+      
+      if (platform === 'meta' && metaAdsService) {
+        await metaAdsService.optimizeCampaign(id, rules);
+      } else if (platform === 'tiktok' && tiktokAdsService) {
+        await tiktokAdsService.optimizeCampaign(id, rules);
+      } else {
+        return res.status(400).json({ error: `${platform} optimization not available` });
+      }
+      
+      res.json({ success: true, message: 'Campaign optimization applied' });
+    } catch (error) {
+      res.status(500).json({ error: `Campaign optimization failed: ${error}` });
+    }
+  });
+
+  app.post("/api/campaigns/:id/pause", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { platform } = req.body;
+      
+      if (platform === 'meta' && metaAdsService) {
+        await metaAdsService.pauseCampaign(id);
+      } else if (platform === 'tiktok' && tiktokAdsService) {
+        await tiktokAdsService.pauseCampaign(id);
+      } else {
+        return res.status(400).json({ error: `${platform} service not available` });
+      }
+      
+      res.json({ success: true, message: 'Campaign paused' });
+    } catch (error) {
+      res.status(500).json({ error: `Campaign pause failed: ${error}` });
+    }
+  });
+
+  // AI Video Generation with Thinking
+  app.post("/api/video/generate-with-thinking", async (req, res) => {
+    try {
+      if (!geminiVideoGenerator) {
+        return res.status(503).json({ error: 'Gemini Video Generator not configured' });
+      }
+      
+      const request = req.body;
+      const plan = await geminiVideoGenerator.generateVideoWithThinking(request);
+      
+      res.json(plan);
+    } catch (error) {
+      res.status(500).json({ error: `Video planning failed: ${error}` });
+    }
+  });
+
+  app.post("/api/video/create-from-plan", async (req, res) => {
+    try {
+      if (!geminiVideoGenerator) {
+        return res.status(503).json({ error: 'Gemini Video Generator not configured' });
+      }
+      
+      const { plan, provider } = req.body;
+      const prompt = await geminiVideoGenerator.generateVideoPrompt(plan);
+      
+      // Generate video using the orchestrator
+      const result = await videoOrchestrator.generateVideo(provider, {
+        prompt,
+        style: plan.visual.style,
+        duration: 15,
+        resolution: '1080p'
+      });
+      
+      res.json({
+        ...result,
+        plan: plan.thinking,
+        metadata: plan.metadata
+      });
+    } catch (error) {
+      res.status(500).json({ error: `Video creation failed: ${error}` });
+    }
+  });
+
+  app.get("/api/campaigns/providers", async (req, res) => {
+    try {
+      const providers = {
+        meta: metaAdsService?.getProviderInfo() || { available: false },
+        tiktok: tiktokAdsService?.getProviderInfo() || { available: false },
+        gemini: geminiVideoGenerator?.getProviderInfo() || { available: false }
+      };
+      
+      res.json(providers);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get provider info: ${error}` });
     }
   });
 
