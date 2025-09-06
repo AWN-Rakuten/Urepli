@@ -11,6 +11,8 @@ import N8nTemplates from "@/components/N8nTemplates";
 import RSSStreamViewer from "@/components/RSSStreamViewer";
 import { VideoGeneration } from "@/components/VideoGeneration";
 import { AutomationDashboard } from "@/components/AutomationDashboard";
+import { CampaignManager } from "@/components/CampaignManager";
+import { VideoGenerator } from "@/components/VideoGenerator";
 import { Button } from "@/components/ui/button";
 import { Plus, Play, Settings } from "lucide-react";
 import type { DashboardMetrics, Workflow, BanditArm, Content, AutomationLog, ApiConfiguration } from "@/types";
@@ -135,6 +137,16 @@ export default function Dashboard() {
         {/* Full Automation Pipeline */}
         <div className="mb-8">
           <AutomationDashboard />
+        </div>
+
+        {/* AI Video Generator with Thinking */}
+        <div className="mb-8">
+          <VideoGenerator />
+        </div>
+
+        {/* Campaign Management */}
+        <div className="mb-8">
+          <CampaignManager />
         </div>
 
         {/* Content and Logs */}
