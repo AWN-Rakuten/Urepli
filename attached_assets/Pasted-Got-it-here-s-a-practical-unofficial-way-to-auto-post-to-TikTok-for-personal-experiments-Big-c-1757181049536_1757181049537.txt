@@ -1,0 +1,183 @@
+Got it—here’s a **practical, unofficial** way to auto-post to TikTok for personal experiments. Big caveat up front: TikTok can change the web UI and policies at any time. This approach **may break** and **could risk your account**; don’t use it for anything critical.
+
+# Plan
+
+1. Do a **one-time manual login** to save cookies.
+2. Reuse those cookies to **auto-upload** via the web uploader.
+3. (Optional) Schedule the script with cron/Task Scheduler.
+
+Below are working starter scripts with **Playwright (Node.js)**. They avoid any “anti-detection” tricks and don’t bypass captchas or 2FA.
+
+---
+
+## 1) One-time login to save cookies
+
+```bash
+npm init -y
+npm i -D playwright
+npx playwright install chromium
+```
+
+**saveCookies.js**
+
+```js
+// Run this ONCE, interactively, to log in and save cookies.
+import { chromium } from 'playwright';
+import fs from 'fs';
+
+const COOKIE_PATH = './tiktok_cookies.json';
+
+(async () => {
+  const browser = await chromium.launch({ headless: false, args: ['--lang=en-US'] });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+
+  // Go to TikTok and log in manually (username/password, QR, etc.)
+  await page.goto('https://www.tiktok.com/login', { waitUntil: 'domcontentloaded' });
+
+  console.log('Please log in manually, then press Enter here…');
+
+  // Pause so you can complete login in the UI
+  process.stdin.resume();
+  process.stdin.on('data', async () => {
+    // Verify you are logged in by checking for the profile menu
+    try {
+      await page.goto('https://www.tiktok.com/', { waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('[data-e2e="profile-icon"]', { timeout: 15000 });
+    } catch (e) {
+      console.error('Still not logged in. Make sure you finished login in the browser window.');
+      process.exit(1);
+    }
+
+    const cookies = await context.cookies();
+    fs.writeFileSync(COOKIE_PATH, JSON.stringify(cookies, null, 2));
+    console.log('Cookies saved to', COOKIE_PATH);
+    await browser.close();
+    process.exit(0);
+  });
+})();
+```
+
+Run:
+
+```bash
+node saveCookies.js
+```
+
+* Complete login in the opened browser window.
+* Back in the terminal, press **Enter** to save cookies.
+
+---
+
+## 2) Auto-upload script (reuses cookies)
+
+**uploadTikTok.js**
+
+```js
+import { chromium } from 'playwright';
+import fs from 'fs';
+import path from 'path';
+
+const COOKIE_PATH = './tiktok_cookies.json';
+
+// Minimal selectors—TikTok may change these; update with `npx playwright codegen https://www.tiktok.com/upload`
+const SELECTORS = {
+  fileInput: 'input[type="file"]',
+  captionBox: '[data-e2e="caption-editor"] textarea, [data-e2e="caption-editor"] div[contenteditable="true"]',
+  postButton: 'button:has-text("Post"), [data-e2e="post-button"]',
+  processingDoneMarker: '[data-e2e="upload-cover"]', // appears after the video loads
+};
+
+async function loadCookies(context) {
+  const cookies = JSON.parse(fs.readFileSync(COOKIE_PATH, 'utf-8'));
+  await context.addCookies(cookies);
+}
+
+async function waitAndType(page, selector, text) {
+  await page.waitForSelector(selector, { timeout: 30000 });
+  const el = await page.locator(selector).first();
+  await el.click({ delay: 30 });
+  await el.fill('');            // clear if textarea
+  await el.type(text, { delay: 20 });
+}
+
+(async () => {
+  const videoPath = process.argv[2]; // e.g., node uploadTikTok.js ./video.mp4 "your caption #tags"
+  const caption   = process.argv.slice(3).join(' ') || 'My test upload';
+
+  if (!videoPath || !fs.existsSync(videoPath)) {
+    console.error('Usage: node uploadTikTok.js /full/path/video.mp4 "your caption"');
+    process.exit(1);
+  }
+
+  const browser = await chromium.launch({ headless: true }); // set false to debug
+  const context = await browser.newContext();
+  await loadCookies(context);
+
+  const page = await context.newPage();
+  // Go straight to upload; you should already be logged in via cookies
+  await page.goto('https://www.tiktok.com/upload', { waitUntil: 'domcontentloaded' });
+
+  // If session expired, fail fast so you can re-run saveCookies.js
+  const loginNeeded = await page.locator('text=Log in').first().isVisible().catch(() => false);
+  if (loginNeeded) {
+    console.error('Session not authenticated. Re-run saveCookies.js to refresh cookies.');
+    process.exit(1);
+  }
+
+  // Upload video
+  await page.setInputFiles(SELECTORS.fileInput, path.resolve(videoPath));
+
+  // Wait for processing UI to appear (marker element may change; adjust as needed)
+  await page.waitForSelector(SELECTORS.processingDoneMarker, { timeout: 180000 });
+
+  // Fill caption
+  await waitAndType(page, SELECTORS.captionBox, caption);
+
+  // Post
+  const postBtn = page.locator(SELECTORS.postButton).first();
+  await postBtn.waitFor({ timeout: 30000 });
+  await postBtn.click();
+
+  // Optional: wait for confirmation/toast or redirect
+  await page.waitForTimeout(8000);
+
+  console.log('Upload attempted. Verify in your profile.');
+  await browser.close();
+})();
+```
+
+Run:
+
+```bash
+node uploadTikTok.js /absolute/path/to/video.mp4 "Your caption #hashtag"
+```
+
+**Notes**
+
+* If you hit a login wall, re-run `saveCookies.js`.
+* Selectors can change—use `npx playwright codegen https://www.tiktok.com/upload` to capture fresh ones.
+* Don’t add any “human emulation” or captcha-bypass code—that’s risky and out of scope.
+
+---
+
+## 3) (Optional) Scheduling
+
+* **macOS/Linux (cron)**:
+
+  ```bash
+  crontab -e
+  # Post every day at 09:30
+  30 9 * * * /usr/bin/node /path/uploadTikTok.js /path/video.mp4 "Good morning #test" >> /path/tk.log 2>&1
+  ```
+* **Windows**: Use Task Scheduler → Create Basic Task → point to `node.exe` with arguments `C:\path\uploadTikTok.js C:\path\video.mp4 "Caption"`.
+
+---
+
+## What about ads?
+
+* Ads must go through **TikTok Ads Manager**. There isn’t a safe or supported way to “auto-place ads” without using their platform (or the official Marketing API). You can still schedule your **organic posts** with the script above and run ads manually on selected posts.
+
+---
+
+If you want, tell me your OS (Win/macOS/Linux) and I’ll tailor the scripts (e.g., dotenv for paths, logging, or a small queue/scheduler that cycles through a folder of videos).
