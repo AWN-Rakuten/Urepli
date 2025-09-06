@@ -1,0 +1,117 @@
+streams:
+  - key: mnp
+    display: "MNP/携帯乗換"
+    style_primary: "serious"
+    style_secondary: "kawaii"
+    has_affiliate: true
+    keywords: ["mnp","乗り換え","スマホ","端末割引","ポイント還元","キャッシュバック","携帯","格安sim"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/it.xml"
+      - "https://k-tai.watch.impress.co.jp/data/rss/1.0/ktw/feed.rdf"
+      - "https://news.mynavi.jp/rss/techplus/mobile"
+    affiliate_url_env: "AFFILIATE_MNP_URL"
+
+  - key: credit
+    display: "クレジット/ポイント"
+    style_primary: "serious"
+    style_secondary: "kawaii"
+    has_affiliate: true
+    keywords: ["入会特典","年会費無料","ポイント還元","キャンペーン","クレジットカード","ポイント","還元率"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/economy.xml"
+      - "https://news.mynavi.jp/rss/money"
+      - "https://diamond.jp/category/finance.rss"
+    affiliate_url_env: "AFFILIATE_CREDIT_URL"
+
+  - key: tech
+    display: "テック/ガジェット"
+    style_primary: "tech"
+    style_secondary: "serious"
+    has_affiliate: false
+    keywords: ["発表","発売","比較","性能","レビュー","新製品","アップデート","テクノロジー"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/it.xml"
+      - "https://pc.watch.impress.co.jp/data/rss/1.0/pcw/feed.rdf"
+      - "https://www.itmedia.co.jp/news/rss/2.0/news_bursts.xml"
+
+  - key: anime
+    display: "アニメ/エンタメ"
+    style_primary: "kawaii"
+    style_secondary: "fun"
+    has_affiliate: true
+    keywords: ["放送開始","制作決定","コラボ","上映","聖地巡礼","アニメ","声優","映画化"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/entertainment.xml"
+      - "https://www.animatetimes.com/rss/news/"
+      - "https://natalie.mu/comic/feed/news"
+    affiliate_url_env: "AFFILIATE_ANIME_URL"
+
+  - key: travel
+    display: "旅行/観光"
+    style_primary: "calm"
+    style_secondary: "kawaii"
+    has_affiliate: true
+    keywords: ["セール","タイムセール","割引","宿","航空券","旅行","観光","ホテル"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/domestic.xml"
+      - "https://travel.watch.impress.co.jp/data/rss/1.0/trw/feed.rdf"
+      - "https://www.traicy.com/feed"
+    affiliate_url_env: "AFFILIATE_TRAVEL_URL"
+
+  - key: fashion
+    display: "ファッション/ビューティ"
+    style_primary: "kawaii"
+    style_secondary: "aesthetic"
+    has_affiliate: true
+    keywords: ["新作","先行","限定","コラボ","セール","ファッション","コスメ","ブランド"]
+    sources_rss:
+      - "https://www.fashionsnap.com/rss/all/"
+      - "https://www.wwdjapan.com/rss/all"
+      - "https://www.vogue.co.jp/feed"
+    affiliate_url_env: "AFFILIATE_FASHION_URL"
+
+  - key: food
+    display: "新商品/グルメ"
+    style_primary: "fun"
+    style_secondary: "kawaii"
+    has_affiliate: false
+    keywords: ["新商品","期間限定","発売","コラボ","グルメ","レストラン","スイーツ"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/life.xml"
+      - "https://www.walkerplus.com/rss/gourmet.xml"
+      - "https://www.food-fukui.jp/rss/news.xml"
+
+  - key: hacks
+    display: "節約/ライフハック"
+    style_primary: "serious"
+    style_secondary: "teacher"
+    has_affiliate: true
+    keywords: ["節約","値下げ","還元","注意","手続き","ライフハック","お得","節税"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/economy.xml"
+      - "https://allabout.co.jp/rss/economics/"
+      - "https://diamond.jp/category/lifestyle.rss"
+    affiliate_url_env: "AFFILIATE_HACKS_URL"
+
+  - key: jobs
+    display: "仕事/スキル"
+    style_primary: "serious"
+    style_secondary: "career"
+    has_affiliate: true
+    keywords: ["求人","副業","スキル","資格","リモート","転職","キャリア","働き方"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/business.xml"
+      - "https://diamond.jp/category/career.rss"
+      - "https://www.itmedia.co.jp/business/rss/2.0/news_bursts.xml"
+    affiliate_url_env: "AFFILIATE_JOBS_URL"
+
+  - key: cute
+    display: "癒し/動物"
+    style_primary: "kawaii"
+    style_secondary: "heartwarming"
+    has_affiliate: false
+    keywords: ["保護","話題","感動","かわいい","動物","ペット","癒し"]
+    sources_rss:
+      - "https://news.yahoo.co.jp/rss/topics/life.xml"
+      - "https://natalie.mu/music/feed/news"
+      - "https://www.oricon.co.jp/rss/news/"

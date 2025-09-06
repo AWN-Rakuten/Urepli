@@ -8,6 +8,7 @@ import ContentLibrary from "@/components/ContentLibrary";
 import AutomationLogs from "@/components/AutomationLogs";
 import ConfigurationModal from "@/components/ConfigurationModal";
 import N8nTemplates from "@/components/N8nTemplates";
+import RSSStreamViewer from "@/components/RSSStreamViewer";
 import { Button } from "@/components/ui/button";
 import { Plus, Play, Settings } from "lucide-react";
 import type { DashboardMetrics, Workflow, BanditArm, Content, AutomationLog, ApiConfiguration } from "@/types";
@@ -112,6 +113,11 @@ export default function Dashboard() {
               <BanditOptimization banditArms={dashboardData.banditArms} />
             </>
           )}
+        </div>
+
+        {/* Real RSS Content Streams */}
+        <div className="mb-8">
+          <RSSStreamViewer />
         </div>
 
         {/* N8n Templates Section */}

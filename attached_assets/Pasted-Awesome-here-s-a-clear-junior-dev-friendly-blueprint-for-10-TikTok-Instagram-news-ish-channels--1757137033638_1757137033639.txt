@@ -1,0 +1,366 @@
+Awesome—here’s a clear, junior-dev friendly blueprint for 10 TikTok/Instagram “news-ish” channels + clip types, and exactly how they’re auto-filled from RSS/trending sources and stitched together with Google Gemini + free APIs. Everything runs on the same platform you’re building (orchestrator → render → publish), so you only maintain one codebase.
+
+
+---
+
+A) The 10 content streams (channels) you’ll run
+
+Each stream = a logical channel/theme. One brand/account can host multiple streams, or you can split per account.
+
+Stream	Typical video angle	Core sources (RSS/APIs)	Hook style	CTA & disclosure
+
+1) MNP / Mobile Deals (JP)	“This month’s best net cost”	Carrier PR/news, comparison blogs, promo pages (use RSS or scrape via compliant endpoints)	Serious or Kawaii bargain	“詳細はプロフィールへ” + #PR #広告
+2) Credit Cards / Finance Offers	“Sign-up perks & effective points math”	Bank/issuer updates, deal trackers, points blogs (RSS)	Serious trust	“特典まとめはLPへ” + #PR #広告
+3) Tech & Gadgets	“New phone/laptop features → is it worth it?”	Tech news RSS, OEM blogs, review feeds	Tech punchy	“比較表はLPへ”
+4) Anime / Entertainment	“Trailer drops, release news, collabs”	Anime news feeds, studio blogs, streaming updates	Kawaii hype	“配信日/特典はLPへ”
+5) Travel / Local Deals	“Cheap routes, hotel flash sales, events”	Tourism boards, airline/hotel deal feeds	Calm inspo	“予約リンクはLPへ” + #PR #広告
+6) Fashion / Beauty	“Trend alerts, sale highlights”	Brand press/newsroom feeds, lookbooks (RSS)	Aesthetic/Kawaii	“セール一覧はLPへ” + #PR
+7) Food / Convenience Store	“New items this week”	Retailer PR, food blogs RSS	Fun/snappy	“最寄り店舗/通販はLPへ”
+8) Money-Saving Hacks	“This week: bills/points saving trick”	Consumer tips columns, official notices RSS	Teacher vibe	“やり方/注意点はLPへ”
+9) Jobs / Skills / Side Hustles	“High-value certs, remote gigs”	Govt/edu feeds, job boards RSS	Career calm	“応募/教材リンクはLPへ” + #PR
+10) Cute / Heartwarming	“Feel-good mini-stories”	Local news human-interest, animal rescues (RSS)	Kawaii	“続きはLPへ” (no affiliate if none)
+
+
+> You will map each stream to one or more affiliate funnels where applicable (e.g., 1→MNP offers, 2→A8.net credit cards, 5→travel partners).
+
+
+
+
+---
+
+B) Data flow (end-to-end)
+
+[RSS/Trends/PR APIs] → ingest & rank → 
+[Gemini] summarize + localize script (JP) → 
+[TTS] voice → 
+[Render] MP4 (9:16, captions) → 
+[Publish] TikTok/Instagram → 
+[Analytics + Bandit] learn which stream/hook/template returns most ¥ → 
+[GrowthBook flags] next run picks winners automatically
+
+
+---
+
+C) Ingestion layer (per stream)
+
+C1. Fetch sources
+
+Use a simple RSS fetcher per stream (your Make/n8n “Scenario 1” or a small FastAPI endpoint).
+
+Store raw items as {id, title, link, source, published_at, stream}.
+
+
+Example Python (requests + feedparser or your own normalizer):
+
+def fetch_rss(urls: list[str]) -> list[dict]:
+    import feedparser, datetime as dt
+    items = []
+    for u in urls:
+        feed = feedparser.parse(u)
+        for e in feed.entries:
+            items.append({
+                "id": e.get("id") or e.get("link"),
+                "title": e.get("title", ""),
+                "link": e.get("link", ""),
+                "source": feed.feed.get("title", ""),
+                "published_at": e.get("published_parsed"),
+            })
+    return items
+
+C2. De-dup & ranking
+
+De-dup by normalized title (lowercase, strip emojis) within the last 48h.
+
+Rank score = recency boost + keyword match for stream + social trend score (optional: add Google Trends topic terms per stream).
+
+
+def rank_items(items, stream_keywords):
+    def score(it):
+        kw = sum(k in it["title"].lower() for k in stream_keywords)
+        recency = 1.0 # add a time-decay if desired
+        return kw * 2 + recency
+    return sorted(items, key=score, reverse=True)
+
+Return top N items per stream (e.g., 3–5).
+
+
+---
+
+D) Script generation with Google Gemini
+
+For each chosen item: call Gemini to produce a JP short-form script. You’ll generate two variants (A/B) per item: NHK-style and Kawaii (or stream-specific).
+
+D1. Prompt template (system + user)
+
+System (once):
+
+You are a Japanese short-form video scriptwriter. 
+Output concise JP text for 25–35s vertical videos (TikTok/IG). 
+Rules:
+- 1 line HOOK (<10 words), 3 BULLETS (max 12 words each), 1 TWIST (max 12 words),
+  CTA "詳細はプロフィールへ", DISCLOSURE "#PR #広告" if affiliate applies, SOURCE "出典: <domain>".
+- Factual, non-defamatory, no medical/financial guarantees, no banned claims.
+- Style: {style}  # "nhk" | "kawaii" | "tech" | "calm"
+- Return JSON only {hook, bullets[], twist, cta, disclosure, source}.
+
+User (per item):
+
+記事タイトル: "{title}"
+URL: {link}
+ストリーム: {stream}
+アフィリエイト有無: {has_affiliate}
+
+上記に基づき、{style} で台本JSONを出力。箇条書きの名詞型、俯瞰→具体→注意点の流れ。
+
+Python (Vertex AI) sketch:
+
+from vertexai.generative_models import GenerativeModel
+model = GenerativeModel("gemini-1.5-pro")
+def make_script(item, style, has_aff):
+    user = f'記事タイトル: "{item["title"]}"\nURL: {item["link"]}\nストリーム: {item["stream"]}\nアフィリエイト有無: {has_aff}\n…'
+    resp = model.generate_content([{"role":"system","parts":[SYSTEM_PROMPT]},
+                                   {"role":"user","parts":[user]}])
+    js = resp.text.strip()
+    return json.loads(js)  # {hook, bullets, twist, cta, disclosure, source}
+
+D2. Compliance pass (Gemini)
+
+Run a policy check pass: “Does this include #PR/#広告 if any affiliate link? Is the claim safe?” If fail → regenerate.
+
+
+---
+
+E) Voice & media
+
+Voice: Google Cloud Text-to-Speech (ja-JP-Wavenet-F default).
+
+B-roll: Free stock (Pexels/Unsplash APIs) by keywords (e.g., “スマホ セール”, “旅行 夕日”). Cache results by stream to save calls.
+
+
+
+---
+
+F) Render service (9:16 + SRT captions)
+
+Cloud Run service that:
+
+1. Downloads WAV & b-roll
+
+
+2. Builds a simple SRT from hook/bullets/twist
+
+
+3. FFmpeg: scale/pad to 1080×1920, burn captions, add voice
+
+
+4. Uploads MP4 & SRT to GCS → returns public/signed URLs
+
+
+
+
+> You already have a baseline render app.py. Add JP font (Noto Sans CJK) if you burn-in text.
+
+
+
+
+---
+
+G) Publish & track
+
+Orchestrator sends {mp4_url, srt_url, caption, platforms} to your Make.com/n8n publish webhook.
+
+Make/n8n uploads to TikTok/Instagram.
+
+Send PostHog events: video_published, and later affiliate_conversion (via your affiliate postbacks).
+
+
+Caption builder (per stream) appends #PR #広告 when affiliate present + a few safe hashtags (2–4).
+
+
+---
+
+H) The 10 stream integrations (how to wire each)
+
+Below: for each stream, define keywords, style, affiliate mapping, and source lists. Keep them in a config file (streams.yaml).
+
+streams:
+  - key: mnp
+    display: "MNP/携帯乗換"
+    style_primary: "serious"
+    style_secondary: "kawaii"
+    has_affiliate: true
+    keywords: ["mnp","乗り換え","スマホ","端末割引","ポイント還元","キャッシュバック"]
+    sources_rss:
+      - "https://.../carrier1/rss"
+      - "https://.../yahoo_topics/mobile.xml"
+    affiliate_url_env: "AFFILIATE_MNP_URL"
+
+  - key: credit
+    display: "クレジット/ポイント"
+    style_primary: "serious"
+    has_affiliate: true
+    keywords: ["入会特典","年会費無料","ポイント還元","キャンペーン"]
+    sources_rss: ["https://.../cards/rss", "https://.../finance/rss"]
+    affiliate_url_env: "AFFILIATE_CREDIT_URL"
+
+  - key: tech
+    display: "テック/ガジェット"
+    style_primary: "tech"
+    keywords: ["発表","発売","比較","性能","レビュー"]
+    sources_rss: ["https://.../technews/rss"]
+
+  - key: anime
+    display: "アニメ/エンタメ"
+    style_primary: "kawaii"
+    keywords: ["放送開始","制作決定","コラボ","上映","聖地巡礼"]
+    sources_rss: ["https://.../anime/rss"]
+
+  - key: travel
+    display: "旅行/観光"
+    style_primary: "calm"
+    has_affiliate: true
+    keywords: ["セール","タイムセール","割引","宿","航空券"]
+    sources_rss: ["https://.../travel/rss"]
+    affiliate_url_env: "AFFILIATE_TRAVEL_URL"
+
+  - key: fashion
+    display: "ファッション/ビューティ"
+    style_primary: "kawaii"
+    has_affiliate: true
+    keywords: ["新作","先行","限定","コラボ","セール"]
+    sources_rss: ["https://.../fashion/rss"]
+    affiliate_url_env: "AFFILIATE_FASHION_URL"
+
+  - key: food
+    display: "新商品/グルメ"
+    style_primary: "fun"
+    keywords: ["新商品","期間限定","発売","コラボ"]
+    sources_rss: ["https://.../food/rss"]
+
+  - key: hacks
+    display: "節約/ライフハック"
+    style_primary: "serious"
+    has_affiliate: true
+    keywords: ["節約","値下げ","還元","注意","手続き"]
+    sources_rss: ["https://.../consumer/rss"]
+    affiliate_url_env: "AFFILIATE_HACKS_URL"
+
+  - key: jobs
+    display: "仕事/スキル"
+    style_primary: "serious"
+    has_affiliate: true
+    keywords: ["求人","副業","スキル","資格","リモート"]
+    sources_rss: ["https://.../jobs/rss","https://.../education/rss"]
+    affiliate_url_env: "AFFILIATE_JOBS_URL"
+
+  - key: cute
+    display: "癒し/動物"
+    style_primary: "kawaii"
+    keywords: ["保護","話題","感動","かわいい"]
+    sources_rss: ["https://.../human-interest/rss"]
+
+> Start with 2–3 sources per stream; expand later. Where RSS is missing, you can point a Make/n8n flow at an official JSON feed or a compliant scraper you control.
+
+
+
+
+---
+
+I) Orchestrator glue (how a single run picks for each stream)
+
+1. For each stream:
+
+Fetch (C1), de-dup & rank (C2), pick top item.
+
+Call Gemini → scripts for {style_primary, style_secondary} (2 variants).
+
+Run compliance pass (Gemini).
+
+Synthesize TTS (Google TTS).
+
+Call render; get {mp4_url, srt_url}.
+
+Build caption = hook + bullets + twist + CTA + disclosure + affiliate_url.
+
+Post to Make/n8n publish with platforms (TikTok/IG).
+
+
+
+2. Analytics: send video_published event with {stream, arm, platform}.
+
+
+3. Learning loop (your n8n “bandit update”): convert conversions & spend → profit per arm → update GrowthBook. Next runs use those weights to bias choices.
+
+
+
+> If you want to cap to 40–50 posts/day, let GrowthBook/weights decide how many to allocate to each stream (e.g., streams with higher recent profit get more slots).
+
+
+
+
+---
+
+J) Minimal endpoint/specs the junior dev will call
+
+1) /fetch_rss (optional service or Make step)
+POST {"streams": ["mnp","tech"]} → returns {stream: [items...]}
+
+2) /script (Gemini wrapper)
+POST {"item": {...}, "style": "kawaii", "has_affiliate": true} → {hook, bullets[], twist, cta, disclosure, source}
+
+3) /tts
+POST {"text": "...full script...","voice":"ja-JP-Wavenet-F"} → {wav_url}
+
+4) /render (already implemented)
+POST {"hook": "...","bullets":[...],...,"voice_url":"...","broll":[...],"style":"kawaii"} → {mp4_url,srt_url,thumb_url}
+
+5) /publish (Make/n8n webhook)
+POST {"mp4_url":"...","srt_url":"...","caption":"...","platforms":["tiktok","instagram"],"niche":"mnp"} → {tiktok_id,instagram_id}
+
+
+---
+
+K) Junior-dev “first run” checklist
+
+1. Config: create streams.yaml (above) and put at least 2 RSS URLs per stream.
+
+
+2. Env: set VOICE_ENGINE=gcloud, GCLOUD_TTS_VOICE=ja-JP-Wavenet-F, RENDER_ENDPOINT, MAKE_PUBLISH_WEBHOOK, and any AFFILIATE_*_URL.
+
+
+3. Test one stream (MNP): run the orchestrator with {niche:"mnp", require_publish:false} and confirm MP4 + publish.
+
+
+4. Turn on 10 streams: schedule a job every 15–30 min to attempt each stream once per cycle (respect daily cap).
+
+
+5. Enable bandit update (n8n JSON I provided): BigQuery → /learn → GrowthBook → allocations.
+
+
+6. Safety: ensure captions include #PR #広告 when affiliate exists, include 出典: <domain>.
+
+
+
+
+---
+
+L) Practical tips
+
+Deduping: hash (“title + domain”) within 48h.
+
+Rate limits: cache RSS results per 15 min; cache Pexels/Unsplash results per keyword.
+
+Fonts: include JP fonts in render container for burned captions.
+
+Fallbacks: if TTS or render fails, retry once; otherwise skip item and move to next.
+
+Platform policy: avoid restricted claims (finance/health); keep a banlist of words by stream.
+
+Hashtags: 2–4 max; include stream-specific tags (e.g., #スマホ #乗り換え), not 20 generic tags.
+
+
+
+---
+
+If you want, I can drop a streams.yaml starter file with sane JP keywords and a Gemini prompt pack you can paste into your orchestrator tomorrow.
+

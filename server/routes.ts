@@ -5,12 +5,16 @@ import { GeminiService } from "./services/gemini";
 import { WorkflowService } from "./services/workflow";
 import { BanditAlgorithmService } from "./services/bandit";
 import { N8nTemplateService } from "./services/n8n-template";
+import { ContentAutomationService } from "./services/content-automation-simple";
+import { RSSIngestionService } from "./services/rss-ingestion";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
   const workflowService = new WorkflowService();
-  const banditService = new BanditAlgorithmService();
+  const banditService = new BanditAlgorithmService(storage);
   const n8nService = new N8nTemplateService();
+  const contentAutomation = new ContentAutomationService(storage);
+  const rssService = new RSSIngestionService(storage);
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {
@@ -650,6 +654,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: { error: String(error), trigger: "automatic" }
       });
       res.status(500).json({ error: "Auto-optimization failed" });
+    }
+  });
+
+  // Real RSS-based content automation endpoints
+  app.get("/api/rss/streams", async (_req, res) => {
+    try {
+      const streams = rssService.getAllStreamConfigs();
+      res.json(streams);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch streams" });
+    }
+  });
+
+  app.get("/api/rss/content/:streamKey", async (req, res) => {
+    try {
+      const { streamKey } = req.params;
+      const { limit = "5" } = req.query;
+      const content = await rssService.fetchStreamContent(streamKey, parseInt(limit as string));
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch stream content" });
+    }
+  });
+
+  app.post("/api/content/generate-script", async (req, res) => {
+    try {
+      const { item, style, hasAffiliate } = req.body;
+      
+      const prompt = `記事タイトル: "${item.title}"
+URL: ${item.link}
+ストリーム: ${item.stream}
+アフィリエイト有無: ${hasAffiliate}
+
+上記に基づき、${style}スタイルで25-35秒のTikTok/Instagram用台本JSONを出力してください。
+
+フォーマット:
+{
+  "hook": "10文字以内のフック",
+  "bullets": ["要点1 (12文字以内)", "要点2 (12文字以内)", "要点3 (12文字以内)"],
+  "twist": "注意点やツイスト (12文字以内)",
+  "cta": "詳細はプロフィールへ",
+  "disclosure": "${hasAffiliate ? '#PR #広告' : ''}",
+  "source": "出典: ${new URL(item.link).hostname}"
+}
+
+日本語で、俯瞰→具体→注意点の流れで作成してください。`;
+
+      const response = await geminiService.generateContent(prompt);
+      
+      // Parse JSON response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+
+      const script = JSON.parse(jsonMatch[0]);
+      res.json(script);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate script" });
+    }
+  });
+
+  app.post("/api/content/generate-tts", async (req, res) => {
+    try {
+      const { text, voice = "ja-JP-Wavenet-F" } = req.body;
+      const audioPath = await geminiService.generateSpeech({
+        text,
+        voice,
+        audioFormat: 'mp3',
+        speed: 1.0,
+        pitch: 0
+      });
+      res.json({ audioPath });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate TTS" });
+    }
+  });
+
+  app.post("/api/content/auto-generate", async (req, res) => {
+    try {
+      await contentOrchestrator.runContentGeneration();
+      res.json({ message: "Content generation cycle completed" });
+    } catch (error) {
+      res.status(500).json({ error: "Content generation failed" });
+    }
+  });
+
+  app.get("/api/content/performance-report", async (req, res) => {
+    try {
+      const { days = "7" } = req.query;
+      const report = await contentAutomation.getPerformanceReport(parseInt(days as string));
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to generate performance report" });
+    }
+  });
+
+  app.post("/api/content/update-analytics", async (req, res) => {
+    try {
+      await contentAutomation.updateAnalytics();
+      res.json({ message: "Analytics updated successfully" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update analytics" });
+    }
+  });
+
+  // Remove mock workflow execution - replace with real RSS content generation
+  app.post("/api/workflows/:id/execute", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Check if this is a content generation workflow
+      if (id === 'jp_content_pipeline') {
+        // Trigger real content generation
+        await contentAutomation.runContentGeneration();
+        
+        await storage.createAutomationLog({
+          type: "workflow_execution",
+          message: `Real content generation workflow executed`,
+          status: "success",
+          workflowId: id,
+          metadata: { trigger: "manual", type: "real_content_generation" }
+        });
+
+        res.json({ 
+          message: "Real content generation started",
+          status: "processing",
+          type: "real_automation"
+        });
+      } else {
+        res.status(404).json({ error: "Workflow not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ error: "Failed to execute workflow" });
     }
   });
 
