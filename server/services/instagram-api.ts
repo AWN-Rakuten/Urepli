@@ -84,14 +84,7 @@ export class InstagramApiService {
 
     } catch (error: any) {
       console.error('Instagram upload error:', error.response?.data || error.message);
-      
-      // Return mock data for demo
-      return {
-        id: `ig_${Date.now()}`,
-        permalink: `https://www.instagram.com/reel/${Date.now()}`,
-        status: 'published',
-        media_type: 'VIDEO'
-      };
+      throw error;
     }
   }
 

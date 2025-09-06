@@ -110,24 +110,6 @@ export class LumaVideoService {
         }
       });
 
-      // Return mock data for development (remove in production)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Returning mock data for development');
-        return await this.storage.updateVideoGeneration(videoGeneration.id, {
-          status: 'completed',
-          videoUrl: `https://mock-video-url.com/luma_${Date.now()}.mp4`,
-          thumbnailUrl: `https://mock-thumbnail-url.com/luma_${Date.now()}.jpg`,
-          duration: 5.0,
-          resolution: '1080p',
-          cost: this.costPerVideo,
-          completedAt: new Date(),
-          metadata: {
-            ...(videoGeneration.metadata || {}),
-            mock: true,
-            prompt: request.prompt
-          }
-        });
-      }
 
       throw error;
     }

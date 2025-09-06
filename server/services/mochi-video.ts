@@ -121,24 +121,6 @@ export class MochiVideoService {
         }
       });
 
-      // Return mock data for development (remove in production)
-      if (process.env.NODE_ENV === 'development') {
-        console.log('Returning mock data for development');
-        return await this.storage.updateVideoGeneration(videoGeneration.id, {
-          status: 'completed',
-          videoUrl: `https://mock-video-url.com/mochi_${Date.now()}.mp4`,
-          thumbnailUrl: `https://mock-thumbnail-url.com/mochi_${Date.now()}.jpg`,
-          duration: 5.4,
-          resolution: '480x848',
-          cost: this.costPerVideo,
-          completedAt: new Date(),
-          metadata: {
-            ...(videoGeneration.metadata || {}),
-            mock: true,
-            prompt: request.prompt
-          }
-        });
-      }
 
       throw error;
     }
