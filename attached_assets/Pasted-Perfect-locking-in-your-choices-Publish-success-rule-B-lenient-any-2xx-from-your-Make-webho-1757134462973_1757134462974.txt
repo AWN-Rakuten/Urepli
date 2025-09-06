@@ -1,0 +1,180 @@
+Perfect — locking in your choices:
+
+Publish success rule: B (lenient) → any 2xx from your Make webhook counts as success.
+
+Voice: Google Cloud TTS (e.g., ja-JP-Wavenet-F).
+
+Reward: purely return-based (maximize profit/ROAS), not CTR or watch time.
+
+
+Here’s what to do next, plus which platform to prioritize in Japan and how to rewire the learning loop for returns-first optimization.
+
+Which platform likely yields the highest returns (JP 2025)
+
+Short answer: Start with TikTok for short-term ROI; scale on Instagram second; treat LinkedIn as niche-only in JP.
+
+Why:
+
+TikTok has very strong short-term ROI in recent independent/media-mix studies; a 2025 dentsu analysis (Nordics) found TikTok delivering the highest short-term ROI vs. other digital channels (directionally useful when picking a starting platform). 
+
+Instagram remains huge and commerce-friendly; Reels reach and time-spent are up in 2025 (e.g., Reels reach ~726.8M globally and outperforms carousels on reach), making it a solid second for scaling affiliate outcomes. 
+
+In Japan, both TikTok and Instagram have deep penetration (97M social identities overall in 2025 per DataReportal). LinkedIn usage is comparatively small for consumer offers, so keep it niche (B2B/finance/recruiting-style funnels). 
+
+
+If you want to be extra JP-specific when placing your first paid ¥100k test: weight TikTok 60–70%, Instagram 30–40%, LinkedIn 0–10% (only if your niche is B2B/finance). Then let the returns-first bandit rapidly reallocate.
+
+Update your configuration now
+
+In Orchestrator env:
+
+VOICE_ENGINE=gcloud
+GCLOUD_TTS_VOICE=ja-JP-Wavenet-F
+
+Keep lenient publish default (no change needed). Set require_publish=false unless you want to enforce Make returning IDs.
+
+
+Make the learning loop “returns-first” (bandit + flags)
+
+1) Define return metrics
+
+Use net profit (or ROAS) per “arm” = a unique combo of {niche × platform × hook × template}.
+
+Revenue per arm (¥): sum of affiliate payouts attributed to that arm within a rolling window (e.g., last 30–180 minutes).
+
+Cost per arm (¥): ad spend for that arm (TikTok/IG) in the same window.
+
+Return (reward):
+
+Profit: reward = revenue - cost
+
+or ROAS: reward = revenue / max(cost, ε) (clip to reasonable bounds)
+
+
+
+Pick one single target. If your spend varies a lot per arm, use profit — it’s more stable for the bandit.
+
+2) Compute arm-level rewards (BigQuery/PostHog)
+
+A simple BigQuery view (pseudo-SQL) to compute profit in the last 60 minutes by arm:
+
+WITH clicks AS (
+  SELECT arm, SUM(payout_yen) AS revenue
+  FROM aff_engine.events
+  WHERE event = 'affiliate_conversion'
+    AND event_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 60 MINUTE)
+  GROUP BY arm
+),
+spend AS (
+  SELECT arm, SUM(spend_yen) AS cost
+  FROM aff_engine.events
+  WHERE event = 'platform_spend_tick'   -- log hourly or per-campaign spend per arm
+    AND event_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 60 MINUTE)
+  GROUP BY arm
+)
+SELECT
+  COALESCE(c.arm, s.arm) AS arm,
+  COALESCE(c.revenue, 0) AS revenue_yen,
+  COALESCE(s.cost, 0)    AS cost_yen,
+  COALESCE(c.revenue,0) - COALESCE(s.cost,0) AS profit_yen
+FROM clicks c
+FULL OUTER JOIN spend s ON c.arm = s.arm;
+
+PostHog can hold the same events; if you prefer, export to BigQuery nightly and query there for the bandit.
+
+3) Feed the bandit with profit events
+
+Your n8n (or Cloud Workflows) cron every 30 minutes:
+
+1. Query BigQuery (or PostHog) as above.
+
+
+2. For each arm, send a single learning event with the profit:
+
+
+
+POST https://jp-bandit-…/learn
+[
+  {"arm":"kawaii_hook_b_tiktok", "reward": 15340.0, "context":{"hour":14,"weekday":5}},
+  {"arm":"nhk_hook_a_instagram", "reward":  8200.0, "context":{"hour":14,"weekday":5}}
+]
+
+(If there’s no activity, you can skip or send zero; keep exploration on to avoid starvation.)
+
+3. Ask the bandit where to allocate next:
+
+
+
+POST https://jp-bandit-…/allocate
+{ "k": 3, "context": {"hour": 14, "weekday": 5} }
+
+Normalize the returned scores to probabilities and write them to GrowthBook (your creative_allocation feature).
+
+4) Orchestrator chooses arms by probability sampling
+
+On each /run, fetch GrowthBook’s creative_allocation and sample the arm (not argmax). This keeps controlled exploration even with profit as the target.
+
+Budget & guardrails for returns-first
+
+Per-platform daily cap: stop boosting a platform when (cumulative cost) – (cumulative revenue) < –¥X.
+
+Arm prune rule: if an arm’s 3-window moving profit < –¥Y, set a GrowthBook flag arm_banned=true for 12–24h.
+
+Cold-start exploration: ensure each new arm gets N impressions (e.g., 500–1,000 views) before eligible for pruning.
+
+
+How to start the first paid test (with your choices)
+
+1. Launch 3–6 arms on TikTok and Instagram combined (e.g., 4 on TikTok, 2 on IG).
+
+
+2. Allocate initial spend: TikTok ~¥70k, Instagram ~¥30k.
+
+
+3. Set bandit window to 60 minutes for the first day, then widen to 180 minutes.
+
+
+4. Use profit as the learning reward; recompute every 30 minutes.
+
+
+5. Let the bandit push budget to winners automatically by updating GrowthBook weights.
+
+
+
+Evidence snapshot you can rely on now (for stakeholders)
+
+Japan 2025 digital & social penetration: ~97M social identities; both TikTok and Instagram are major channels. 
+
+TikTok ROI: dentsu study found highest short-term ROI vs. other channels (region studied: Nordics; consistent with broader findings that TikTok can drive quick sales). 
+
+Instagram commerce reach continues to expand via Reels in 2025. 
+
+LinkedIn JP: smaller for consumer; keep niche. General usage/global stats indicate strong global base but less compelling for B2C in Japan. 
+
+
+
+---
+
+TL;DR action list you can apply today
+
+1. Set:
+
+VOICE_ENGINE=gcloud
+GCLOUD_TTS_VOICE=ja-JP-Wavenet-F
+
+
+2. Prioritize TikTok (start most of the spend), then Instagram.
+
+
+3. In your bandit cron, replace the current reward with profit_yen from the last 30–180 minutes, feed to /learn, then update GrowthBook with /allocate results.
+
+
+4. Add guardrails (daily platform caps, arm pruning).
+
+
+5. Keep lenient publish success (B) until you’re ready to enforce IDs.
+
+
+
+If you want, I can drop a ready-to-run n8n template that: queries BigQuery → computes per-arm profit → hits /learn → updates GrowthBook.
+
