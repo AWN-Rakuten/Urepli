@@ -68,7 +68,7 @@ export class SocialAccountManager {
 
     return accounts.filter(account => {
       // Check if account has reached daily limit
-      if (account.dailyPostCount >= account.maxDailyPosts) {
+      if ((account.dailyPostCount || 0) >= (account.maxDailyPosts || 5)) {
         return false;
       }
 
@@ -107,10 +107,10 @@ export class SocialAccountManager {
    * Calculate account health/priority score
    */
   private calculateAccountScore(account: SocialMediaAccount): number {
-    let score = account.postingPriority * 10; // Base priority weight
+    let score = (account.postingPriority || 1) * 10; // Base priority weight
 
     // Penalize for recent errors
-    score -= account.errorCount * 5;
+    score -= (account.errorCount || 0) * 5;
 
     // Bonus for accounts that haven't posted recently
     if (account.lastPostDate) {
@@ -121,7 +121,7 @@ export class SocialAccountManager {
     }
 
     // Penalize for high daily usage
-    const usageRatio = account.dailyPostCount / account.maxDailyPosts;
+    const usageRatio = (account.dailyPostCount || 0) / (account.maxDailyPosts || 5);
     score -= usageRatio * 15;
 
     return score;
@@ -138,8 +138,8 @@ export class SocialAccountManager {
     await this.storage.updateSocialMediaAccount(accountId, {
       lastUsed: new Date(),
       lastPostDate: new Date(),
-      dailyPostCount: account.dailyPostCount + 1,
-      totalPosts: account.totalPosts + 1,
+      dailyPostCount: (account.dailyPostCount || 0) + 1,
+      totalPosts: (account.totalPosts || 0) + 1,
       errorCount: 0, // Reset error count on success
       lastError: null
     });
@@ -153,7 +153,7 @@ export class SocialAccountManager {
       result: 'success',
       rotationReason: 'scheduled',
       metadata: {
-        dailyPostCount: account.dailyPostCount + 1,
+        dailyPostCount: (account.dailyPostCount || 0) + 1,
         timestamp: new Date()
       }
     });
@@ -166,7 +166,7 @@ export class SocialAccountManager {
     const account = await this.storage.getSocialMediaAccount(accountId);
     if (!account) return;
 
-    const newErrorCount = account.errorCount + 1;
+    const newErrorCount = (account.errorCount || 0) + 1;
     
     // Update account with error info
     const updates: Partial<SocialMediaAccount> = {
@@ -227,7 +227,7 @@ export class SocialAccountManager {
       active: accounts.filter(a => a.status === 'active' && a.isActive).length,
       suspended: accounts.filter(a => a.status === 'error').length,
       rateLimited: accounts.filter(a => a.status === 'rate_limited').length,
-      highError: accounts.filter(a => a.errorCount >= 2).length,
+      highError: accounts.filter(a => (a.errorCount || 0) >= 2).length,
       recentActivity: accounts.filter(a => {
         if (!a.lastUsed) return false;
         const hoursSinceLastUse = (Date.now() - new Date(a.lastUsed).getTime()) / (1000 * 60 * 60);

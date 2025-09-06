@@ -22,6 +22,7 @@ import { AdvancedOptimizationEngine } from "./services/advanced-optimization-eng
 import { AICreativeEngine } from "./services/ai-creative-engine";
 import { WorkflowMarketplace } from "./services/workflow-marketplace";
 import { RealTimeAnalytics } from "./services/real-time-analytics";
+import { registerSocialAccountRoutes } from "./routes/social-accounts";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -67,6 +68,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const creativeEngine = new AICreativeEngine(storage);
   const workflowMarketplace = new WorkflowMarketplace(storage);
   const realTimeAnalytics = new RealTimeAnalytics(storage);
+
+  // Register social media account management routes
+  registerSocialAccountRoutes(app);
 
   // Dashboard data endpoint
   app.get("/api/dashboard", async (_req, res) => {

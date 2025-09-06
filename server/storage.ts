@@ -334,6 +334,7 @@ export class MemStorage implements IStorage {
       id,
       status: generation.status || 'pending',
       cost: generation.cost || 0,
+      metadata: generation.metadata || null,
       createdAt: new Date(),
       completedAt: null
     };
@@ -368,7 +369,7 @@ export class MemStorage implements IStorage {
     return allAccounts.filter(account => 
       account.isActive && 
       account.status === 'active' &&
-      account.errorCount < 3
+      (account.errorCount || 0) < 3
     );
   }
 
@@ -381,6 +382,7 @@ export class MemStorage implements IStorage {
     const newAccount: SocialMediaAccount = {
       ...accountData,
       id,
+      accountType: accountData.accountType || 'official',
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -420,6 +422,7 @@ export class MemStorage implements IStorage {
     const newLog: AccountRotationLog = {
       ...logData,
       id,
+      metadata: logData.metadata || null,
       createdAt: new Date()
     };
     this.accountRotationLogs.set(id, newLog);
