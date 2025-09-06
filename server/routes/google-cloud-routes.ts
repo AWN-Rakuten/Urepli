@@ -3,6 +3,9 @@ import { GoogleCloudAutomation } from '../services/google-cloud-automation';
 import { GoogleCloudWorkflows } from '../services/google-cloud-workflows';
 import { GoogleCloudAffiliateTracker } from '../services/google-cloud-affiliate-tracker';
 import { GoogleCloudROIMonitor } from '../services/google-cloud-roi-monitor';
+import { OpenSourceIntegrations } from '../services/open-source-integrations';
+import { IntelligentScheduler } from '../services/intelligent-scheduler';
+import { MLOptimizationEngine } from '../services/ml-optimization-engine';
 
 const router = Router();
 
@@ -11,6 +14,9 @@ const cloudAutomation = new GoogleCloudAutomation();
 const cloudWorkflows = new GoogleCloudWorkflows();
 const affiliateTracker = new GoogleCloudAffiliateTracker();
 const roiMonitor = new GoogleCloudROIMonitor();
+const openSourceIntegrations = new OpenSourceIntegrations();
+const intelligentScheduler = new IntelligentScheduler();
+const mlOptimizationEngine = new MLOptimizationEngine();
 
 /**
  * Video Upload and Management
@@ -489,6 +495,229 @@ router.post('/roi/implement-optimization', async (req, res) => {
   } catch (error) {
     console.error('Error implementing optimization:', error);
     res.status(500).json({ error: 'Failed to implement optimization' });
+  }
+});
+
+/**
+ * Open Source Integrations
+ */
+router.post('/integrations/rtb-optimize', async (req, res) => {
+  try {
+    const { platform, audienceData, budgetConstraints, performanceHistory } = req.body;
+    
+    const optimization = await openSourceIntegrations.optimizeAdBidding(
+      platform,
+      audienceData,
+      budgetConstraints,
+      performanceHistory
+    );
+    
+    res.json({
+      success: true,
+      optimization,
+      message: 'RTBkit optimization completed',
+    });
+  } catch (error) {
+    console.error('Error with RTB optimization:', error);
+    res.status(500).json({ error: 'Failed to optimize bidding', details: error });
+  }
+});
+
+router.post('/integrations/mautic-sync', async (req, res) => {
+  try {
+    const { conversionData, userProfile } = req.body;
+    
+    const syncResult = await openSourceIntegrations.syncWithMautic(conversionData, userProfile);
+    
+    res.json({
+      success: true,
+      syncResult,
+      message: 'Mautic synchronization completed',
+    });
+  } catch (error) {
+    console.error('Error syncing with Mautic:', error);
+    res.status(500).json({ error: 'Failed to sync with Mautic', details: error });
+  }
+});
+
+router.get('/integrations/unified-analytics', async (req, res) => {
+  try {
+    const { timeframe = 'week' } = req.query;
+    
+    const analytics = await openSourceIntegrations.getUnifiedAnalytics(timeframe as any);
+    
+    res.json({
+      success: true,
+      analytics,
+    });
+  } catch (error) {
+    console.error('Error getting unified analytics:', error);
+    res.status(500).json({ error: 'Failed to get unified analytics' });
+  }
+});
+
+/**
+ * Intelligent Scheduling
+ */
+router.post('/scheduler/generate-schedule', async (req, res) => {
+  try {
+    const { contentQueue, constraints } = req.body;
+    
+    if (!contentQueue || !Array.isArray(contentQueue)) {
+      return res.status(400).json({ error: 'Content queue is required' });
+    }
+    
+    const schedule = await intelligentScheduler.generateOptimalSchedule(
+      contentQueue,
+      constraints
+    );
+    
+    res.json({
+      success: true,
+      schedule,
+      totalPosts: schedule.length,
+      message: '最適なスケジュールが生成されました',
+    });
+  } catch (error) {
+    console.error('Error generating schedule:', error);
+    res.status(500).json({ error: 'Failed to generate schedule', details: error });
+  }
+});
+
+router.post('/scheduler/predict-performance', async (req, res) => {
+  try {
+    const { content, platform, scheduledTime } = req.body;
+    
+    if (!content || !platform || !scheduledTime) {
+      return res.status(400).json({ 
+        error: 'Content, platform, and scheduledTime are required' 
+      });
+    }
+    
+    const prediction = await intelligentScheduler.predictContentPerformance(
+      content,
+      platform,
+      new Date(scheduledTime)
+    );
+    
+    res.json({
+      success: true,
+      prediction,
+      message: 'Performance prediction completed',
+    });
+  } catch (error) {
+    console.error('Error predicting performance:', error);
+    res.status(500).json({ error: 'Failed to predict performance', details: error });
+  }
+});
+
+router.get('/scheduler/recommendations', async (req, res) => {
+  try {
+    const { platform, contentType, targetAudience } = req.query;
+    
+    if (!platform || !contentType) {
+      return res.status(400).json({ error: 'Platform and contentType are required' });
+    }
+    
+    const recommendations = await intelligentScheduler.getSchedulingRecommendations(
+      platform as string,
+      contentType as string,
+      targetAudience ? JSON.parse(targetAudience as string) : {}
+    );
+    
+    res.json({
+      success: true,
+      recommendations,
+      count: recommendations.length,
+    });
+  } catch (error) {
+    console.error('Error getting recommendations:', error);
+    res.status(500).json({ error: 'Failed to get scheduling recommendations' });
+  }
+});
+
+/**
+ * ML Optimization Engine
+ */
+router.post('/ml/generate-strategies', async (req, res) => {
+  try {
+    const { currentCampaigns, performanceGoals } = req.body;
+    
+    if (!currentCampaigns || !performanceGoals) {
+      return res.status(400).json({ 
+        error: 'Current campaigns and performance goals are required' 
+      });
+    }
+    
+    const strategies = await mlOptimizationEngine.generateOptimizationStrategies(
+      currentCampaigns,
+      performanceGoals
+    );
+    
+    res.json({
+      success: true,
+      strategies,
+      totalStrategies: strategies.length,
+      message: 'ML最適化戦略が生成されました',
+    });
+  } catch (error) {
+    console.error('Error generating optimization strategies:', error);
+    res.status(500).json({ error: 'Failed to generate strategies', details: error });
+  }
+});
+
+router.post('/ml/predict-performance', async (req, res) => {
+  try {
+    const { campaignConfig, timeHorizon = 7 } = req.body;
+    
+    if (!campaignConfig) {
+      return res.status(400).json({ error: 'Campaign configuration is required' });
+    }
+    
+    const prediction = await mlOptimizationEngine.predictCampaignPerformance(
+      campaignConfig,
+      timeHorizon
+    );
+    
+    res.json({
+      success: true,
+      prediction,
+      message: 'ML予測が完了しました',
+    });
+  } catch (error) {
+    console.error('Error predicting campaign performance:', error);
+    res.status(500).json({ error: 'Failed to predict performance', details: error });
+  }
+});
+
+router.get('/roi/performance-metrics', async (req, res) => {
+  try {
+    const { timeframe = 'week' } = req.query;
+    
+    const metrics = await roiMonitor.getPerformanceMetrics(timeframe as any);
+    
+    res.json({
+      success: true,
+      metrics,
+    });
+  } catch (error) {
+    console.error('Error getting performance metrics:', error);
+    res.status(500).json({ error: 'Failed to get performance metrics' });
+  }
+});
+
+router.get('/roi/recommendations', async (req, res) => {
+  try {
+    const recommendations = await roiMonitor.getOptimizationRecommendations();
+    
+    res.json({
+      success: true,
+      recommendations,
+      recommendationCount: recommendations.length,
+    });
+  } catch (error) {
+    console.error('Error getting recommendations:', error);
+    res.status(500).json({ error: 'Failed to get recommendations' });
   }
 });
 
