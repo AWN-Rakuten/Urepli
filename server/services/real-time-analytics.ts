@@ -78,133 +78,22 @@ export class RealTimeAnalytics {
   constructor(storage: IStorage) {
     this.storage = storage;
     this.initializeAnalytics();
-    this.startRealTimeMonitoring();
   }
 
   private async initializeAnalytics() {
-    // Initialize with current metrics
-    const initialMetrics: AnalyticsMetric[] = [
-      {
-        id: 'total_revenue',
-        name: 'Total Revenue',
-        value: 127430,
-        previousValue: 118200,
-        change: 9230,
-        changePercent: 7.8,
-        trend: 'up',
-        category: 'revenue',
-        unit: 'currency',
-        timestamp: new Date()
-      },
-      {
-        id: 'campaign_roas',
-        name: 'Campaign ROAS',
-        value: 3.2,
-        previousValue: 2.9,
-        change: 0.3,
-        changePercent: 10.3,
-        trend: 'up',
-        category: 'roi',
-        unit: 'count',
-        timestamp: new Date()
-      },
-      {
-        id: 'ad_spend',
-        name: 'Daily Ad Spend',
-        value: 18500,
-        previousValue: 16800,
-        change: 1700,
-        changePercent: 10.1,
-        trend: 'up',
-        category: 'cost',
-        unit: 'currency',
-        timestamp: new Date()
-      },
-      {
-        id: 'content_engagement',
-        name: 'Content Engagement Rate',
-        value: 8.4,
-        previousValue: 7.2,
-        change: 1.2,
-        changePercent: 16.7,
-        trend: 'up',
-        category: 'engagement',
-        unit: 'percentage',
-        timestamp: new Date()
-      },
-      {
-        id: 'automation_efficiency',
-        name: 'Automation Efficiency',
-        value: 92.1,
-        previousValue: 89.5,
-        change: 2.6,
-        changePercent: 2.9,
-        trend: 'up',
-        category: 'performance',
-        unit: 'percentage',
-        timestamp: new Date()
-      }
-    ];
-
-    initialMetrics.forEach(metric => {
-      this.metrics.set(metric.id, metric);
-    });
-
-    // Initialize sample campaign data
-    this.initializeCampaignData();
+    // Initialize empty metrics - will be populated by real data from campaigns
+    this.metrics = new Map();
+    this.campaignData = new Map();
+    
+    // Start monitoring only if we have real campaign data
+    if (process.env.META_ACCESS_TOKEN || process.env.TIKTOK_ACCESS_TOKEN) {
+      this.startRealTimeMonitoring();
+    }
   }
 
+  // Campaign data will be populated from real APIs only
   private initializeCampaignData() {
-    const sampleCampaigns: CampaignPerformanceData[] = [
-      {
-        campaignId: 'mnp_evening_tiktok_001',
-        campaignName: 'MNP Evening TikTok Campaign',
-        platform: 'tiktok',
-        metrics: {
-          spend: 8500,
-          revenue: 27200,
-          roas: 3.2,
-          impressions: 245000,
-          clicks: 4900,
-          conversions: 182,
-          ctr: 2.0,
-          cpc: 1.73,
-          cpm: 34.69
-        },
-        hourlyData: this.generateHourlyData(24),
-        predictions: {
-          endOfDaySpend: 12000,
-          endOfDayRevenue: 38400,
-          projectedROAS: 3.2
-        }
-      },
-      {
-        campaignId: 'kawaii_instagram_reels_002',
-        campaignName: 'Kawaii Instagram Reels',
-        platform: 'instagram',
-        metrics: {
-          spend: 6200,
-          revenue: 18600,
-          roas: 3.0,
-          impressions: 180000,
-          clicks: 3200,
-          conversions: 124,
-          ctr: 1.78,
-          cpc: 1.94,
-          cpm: 34.44
-        },
-        hourlyData: this.generateHourlyData(24),
-        predictions: {
-          endOfDaySpend: 8500,
-          endOfDayRevenue: 25500,
-          projectedROAS: 3.0
-        }
-      }
-    ];
-
-    sampleCampaigns.forEach(campaign => {
-      this.campaignData.set(campaign.campaignId, campaign);
-    });
+    // No sample data - only real campaign data from APIs
   }
 
   private generateHourlyData(hours: number): Array<{ hour: string; spend: number; revenue: number; roas: number }> {
@@ -237,29 +126,84 @@ export class RealTimeAnalytics {
   }
 
   private startRealTimeMonitoring() {
-    // Simulate real-time updates every 30 seconds
+    // Only monitor when we have real APIs configured
+    if (!process.env.META_ACCESS_TOKEN && !process.env.TIKTOK_ACCESS_TOKEN) {
+      return;
+    }
+    
+    // Check for real data updates every 5 minutes
     setInterval(() => {
-      this.updateMetrics();
       this.checkAlerts();
       this.generateInsights();
-    }, 30000);
+    }, 300000);
   }
 
-  private updateMetrics() {
-    this.metrics.forEach((metric, id) => {
-      // Simulate realistic metric changes
-      const volatility = this.getMetricVolatility(metric.category);
-      const change = (Math.random() - 0.5) * volatility * metric.value;
-      
-      metric.previousValue = metric.value;
-      metric.value = Math.max(0, metric.value + change);
-      metric.change = metric.value - metric.previousValue;
-      metric.changePercent = metric.previousValue > 0 ? 
-        (metric.change / metric.previousValue) * 100 : 0;
-      metric.trend = metric.change > 0 ? 'up' : metric.change < 0 ? 'down' : 'stable';
-      metric.timestamp = new Date();
-      
-      this.metrics.set(id, metric);
+  // Update metrics from real campaign data only
+  async updateMetricsFromCampaigns(campaigns: CampaignPerformanceData[]) {
+    if (campaigns.length === 0) return;
+    
+    const totalSpend = campaigns.reduce((sum, c) => sum + c.metrics.spend, 0);
+    const totalRevenue = campaigns.reduce((sum, c) => sum + c.metrics.revenue, 0);
+    const avgRoas = totalRevenue / totalSpend;
+    const avgCtr = campaigns.reduce((sum, c) => sum + c.metrics.ctr, 0) / campaigns.length;
+    
+    const newMetrics: AnalyticsMetric[] = [
+      {
+        id: 'total_revenue',
+        name: 'Total Revenue',
+        value: totalRevenue,
+        previousValue: this.metrics.get('total_revenue')?.value || 0,
+        change: totalRevenue - (this.metrics.get('total_revenue')?.value || 0),
+        changePercent: 0,
+        trend: 'stable',
+        category: 'revenue',
+        unit: 'currency',
+        timestamp: new Date()
+      },
+      {
+        id: 'total_spend',
+        name: 'Total Spend',
+        value: totalSpend,
+        previousValue: this.metrics.get('total_spend')?.value || 0,
+        change: totalSpend - (this.metrics.get('total_spend')?.value || 0),
+        changePercent: 0,
+        trend: 'stable',
+        category: 'cost',
+        unit: 'currency',
+        timestamp: new Date()
+      },
+      {
+        id: 'campaign_roas',
+        name: 'Campaign ROAS',
+        value: avgRoas,
+        previousValue: this.metrics.get('campaign_roas')?.value || 0,
+        change: avgRoas - (this.metrics.get('campaign_roas')?.value || 0),
+        changePercent: 0,
+        trend: 'stable',
+        category: 'roi',
+        unit: 'count',
+        timestamp: new Date()
+      },
+      {
+        id: 'avg_ctr',
+        name: 'Average CTR',
+        value: avgCtr,
+        previousValue: this.metrics.get('avg_ctr')?.value || 0,
+        change: avgCtr - (this.metrics.get('avg_ctr')?.value || 0),
+        changePercent: 0,
+        trend: 'stable',
+        category: 'engagement',
+        unit: 'percentage',
+        timestamp: new Date()
+      }
+    ];
+    
+    newMetrics.forEach(metric => {
+      if (metric.previousValue > 0) {
+        metric.changePercent = (metric.change / metric.previousValue) * 100;
+        metric.trend = metric.change > 0 ? 'up' : metric.change < 0 ? 'down' : 'stable';
+      }
+      this.metrics.set(metric.id, metric);
     });
   }
 
@@ -450,18 +394,38 @@ export class RealTimeAnalytics {
     const insights = await this.getInsights();
     const campaigns = await this.getCampaignPerformance();
     
+    // Only show data if we have real campaigns
+    if (campaigns.length === 0) {
+      return {
+        overview: {
+          totalRevenue: 0,
+          totalSpend: 0,
+          avgROAS: 0,
+          engagementRate: 0,
+          automationEfficiency: 0
+        },
+        metrics: [],
+        alerts: [],
+        insights: [],
+        campaigns: [],
+        healthScore: 0,
+        lastUpdated: new Date(),
+        message: 'No active campaigns. Configure API keys to see real data.'
+      };
+    }
+    
     return {
       overview: {
         totalRevenue: metrics.find(m => m.id === 'total_revenue')?.value || 0,
-        totalSpend: metrics.find(m => m.id === 'ad_spend')?.value || 0,
+        totalSpend: metrics.find(m => m.id === 'total_spend')?.value || 0,
         avgROAS: metrics.find(m => m.id === 'campaign_roas')?.value || 0,
-        engagementRate: metrics.find(m => m.id === 'content_engagement')?.value || 0,
-        automationEfficiency: metrics.find(m => m.id === 'automation_efficiency')?.value || 0
+        engagementRate: metrics.find(m => m.id === 'avg_ctr')?.value || 0,
+        automationEfficiency: campaigns.length > 0 ? 100 : 0
       },
       metrics,
-      alerts: alerts.slice(0, 5), // Top 5 alerts
-      insights: insights.slice(0, 3), // Top 3 insights
-      campaigns: campaigns.slice(0, 5), // Top 5 campaigns
+      alerts: alerts.slice(0, 5),
+      insights: insights.slice(0, 3),
+      campaigns: campaigns.slice(0, 5),
       healthScore: this.calculateHealthScore(metrics),
       lastUpdated: new Date()
     };
@@ -505,18 +469,37 @@ export class RealTimeAnalytics {
     return totalWeight > 0 ? Math.round(score / totalWeight) : 50;
   }
 
-  // Real-time data stream simulation
+  // Real-time data from actual campaigns only
   async getRealtimeMetrics(): Promise<any> {
-    // Simulate live data feed
+    const campaigns = Array.from(this.campaignData.values());
+    
+    if (campaigns.length === 0) {
+      return {
+        timestamp: new Date(),
+        activeUsers: 0,
+        currentSpend: 0,
+        conversionsThisHour: 0,
+        topPerformingCampaign: 'No active campaigns',
+        marketActivity: {
+          japan: 0,
+          global: 0
+        }
+      };
+    }
+    
+    const topCampaign = campaigns.sort((a, b) => b.metrics.roas - a.metrics.roas)[0];
+    const totalSpend = campaigns.reduce((sum, c) => sum + c.metrics.spend, 0);
+    const totalConversions = campaigns.reduce((sum, c) => sum + c.metrics.conversions, 0);
+    
     return {
       timestamp: new Date(),
-      activeUsers: Math.floor(Math.random() * 1000) + 500,
-      currentSpend: Math.random() * 100 + 50,
-      conversionsThisHour: Math.floor(Math.random() * 20) + 5,
-      topPerformingCampaign: Array.from(this.campaignData.values())[0]?.campaignName || 'N/A',
+      activeUsers: campaigns.reduce((sum, c) => sum + c.metrics.clicks, 0),
+      currentSpend: totalSpend,
+      conversionsThisHour: totalConversions,
+      topPerformingCampaign: topCampaign.campaignName,
       marketActivity: {
-        japan: Math.random() * 0.3 + 0.7, // High activity
-        global: Math.random() * 0.5 + 0.5
+        japan: campaigns.filter(c => c.platform === 'both' || c.platform === 'tiktok').length > 0 ? 0.8 : 0,
+        global: campaigns.length > 0 ? 0.6 : 0
       }
     };
   }

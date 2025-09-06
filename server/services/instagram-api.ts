@@ -89,11 +89,7 @@ export class InstagramApiService {
   }
 
   private async uploadVideoFile(videoPath: string): Promise<{ video_url: string }> {
-    // For simplicity, using a mock URL. In production, you'd upload to Instagram's servers
-    // or use a CDN that Instagram can access
-    return {
-      video_url: `https://example.com/videos/${path.basename(videoPath)}`
-    };
+    throw new Error('Video upload requires proper Instagram Business API setup with media upload endpoints');
   }
 
   async getReelAnalytics(mediaId: string): Promise<InstagramAnalytics> {
@@ -150,33 +146,7 @@ export class InstagramApiService {
 
     } catch (error: any) {
       console.error('Instagram analytics error:', error.response?.data || error.message);
-      
-      // Return realistic mock data
-      const views = Math.floor(Math.random() * 30000) + 3000;
-      const likes = Math.floor(views * 0.08);
-      const comments = Math.floor(views * 0.01);
-      const shares = Math.floor(views * 0.005);
-      const saves = Math.floor(views * 0.03);
-      const reach = Math.floor(views * 0.7);
-      const interactions = likes + comments + shares + saves;
-      const engagementRate = reach > 0 ? (interactions / reach) * 100 : 0;
-      const revenue = views * (0.005 + (engagementRate / 100) * 0.02);
-      const cost = 12 + (shares * 0.08);
-      
-      return {
-        mediaId,
-        views,
-        likes,
-        comments,
-        shares,
-        saves,
-        reach,
-        impressions: reach * 1.2,
-        engagementRate,
-        revenue,
-        cost,
-        roas: cost > 0 ? revenue / cost : 0
-      };
+      throw error;
     }
   }
 
@@ -215,16 +185,7 @@ export class InstagramApiService {
 
     } catch (error: any) {
       console.error('Instagram promotion error:', error.response?.data || error.message);
-      
-      // Return mock promotion data
-      return {
-        adId: `ig_ad_${Date.now()}`,
-        status: 'active',
-        budget,
-        estimatedReach: Math.floor(budget * 80),
-        startDate: new Date().toISOString(),
-        platform: 'instagram'
-      };
+      throw error;
     }
   }
 
@@ -261,25 +222,7 @@ export class InstagramApiService {
 
     } catch (error: any) {
       console.error('Instagram promotion analytics error:', error.response?.data || error.message);
-      
-      // Return mock analytics
-      const spend = Math.random() * 80 + 40;
-      const impressions = Math.floor(spend * 120);
-      const clicks = Math.floor(impressions * 0.015);
-      const videoViews = Math.floor(clicks * 0.8);
-      
-      return {
-        adId,
-        spend,
-        impressions,
-        clicks,
-        videoViews,
-        ctr: (clicks / impressions) * 100,
-        cpm: (spend / impressions) * 1000,
-        costPerView: videoViews > 0 ? spend / videoViews : 0,
-        roas: videoViews > 0 ? (videoViews * 0.01) / spend : 0,
-        platform: 'instagram'
-      };
+      throw error;
     }
   }
 }

@@ -106,17 +106,7 @@ export class TikTokApiService {
 
     } catch (error: any) {
       console.error('TikTok upload error:', error.response?.data || error.message);
-      
-      // Return mock data for demo if API fails
-      return {
-        id: `tiktok_${Date.now()}`,
-        url: `https://www.tiktok.com/@demo/video/${Date.now()}`,
-        status: 'published',
-        views: Math.floor(Math.random() * 10000) + 1000,
-        likes: Math.floor(Math.random() * 500) + 50,
-        shares: Math.floor(Math.random() * 100) + 10,
-        comments: Math.floor(Math.random() * 50) + 5
-      };
+      throw error;
     }
   }
 
@@ -170,27 +160,7 @@ export class TikTokApiService {
 
     } catch (error: any) {
       console.error('TikTok analytics error:', error.response?.data || error.message);
-      
-      // Return realistic mock data if API fails
-      const views = Math.floor(Math.random() * 50000) + 5000;
-      const likes = Math.floor(views * 0.05);
-      const shares = Math.floor(views * 0.01);
-      const comments = Math.floor(views * 0.005);
-      const engagementRate = ((likes + shares + comments) / views) * 100;
-      const revenue = views * (0.01 + (engagementRate / 100) * 0.04);
-      const cost = 15 + (shares * 0.1);
-      
-      return {
-        videoId,
-        views,
-        likes,
-        shares,
-        comments,
-        engagementRate,
-        revenue,
-        cost,
-        roas: cost > 0 ? revenue / cost : 0
-      };
+      throw error;
     }
   }
 
@@ -236,15 +206,7 @@ export class TikTokApiService {
 
     } catch (error: any) {
       console.error('TikTok promotion error:', error.response?.data || error.message);
-      
-      // Return mock promotion data
-      return {
-        adId: `ad_${Date.now()}`,
-        status: 'active',
-        budget,
-        estimatedReach: Math.floor(budget * 100),
-        startDate: new Date().toISOString()
-      };
+      throw error;
     }
   }
 
@@ -284,24 +246,7 @@ export class TikTokApiService {
 
     } catch (error: any) {
       console.error('TikTok promotion analytics error:', error.response?.data || error.message);
-      
-      // Return mock analytics
-      const spend = Math.random() * 100 + 50;
-      const impressions = Math.floor(spend * 150);
-      const clicks = Math.floor(impressions * 0.02);
-      const conversions = Math.floor(clicks * 0.1);
-      
-      return {
-        adId,
-        spend,
-        impressions,
-        clicks,
-        conversions,
-        ctr: (clicks / impressions) * 100,
-        cpm: spend / (impressions / 1000),
-        costPerConversion: conversions > 0 ? spend / conversions : 0,
-        roas: conversions > 0 ? (conversions * 10) / spend : 0
-      };
+      throw error;
     }
   }
 }

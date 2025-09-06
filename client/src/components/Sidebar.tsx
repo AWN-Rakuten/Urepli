@@ -1,22 +1,48 @@
 import { Bot, BarChart3, Workflow, Video, TrendingUp, Settings, Clapperboard } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 
 const navItems = [
-  { id: "overview", icon: BarChart3, label: "Overview", active: true },
-  { id: "workflows", icon: Workflow, label: "Workflows" },
-  { id: "content", icon: Video, label: "Content Library" },
-  { id: "video-generation", icon: Clapperboard, label: "Video Generation" },
-  { id: "performance", icon: TrendingUp, label: "Performance" },
-  { id: "settings", icon: Settings, label: "Configuration" },
-];
-
-const systemStatus = [
-  { name: "Gemini API", status: "active" },
-  { name: "Google Cloud TTS", status: "active" },
-  { name: "n8n Workflows", status: "warning" },
-  { name: "TikTok API", status: "active" },
+  { id: "overview", path: "/", icon: BarChart3, label: "Overview" },
+  { id: "workflows", path: "/workflows", icon: Workflow, label: "Workflows" },
+  { id: "content", path: "/content", icon: Video, label: "Content Library" },
+  { id: "video-generation", path: "/video-generation", icon: Clapperboard, label: "Video Generation" },
+  { id: "performance", path: "/performance", icon: TrendingUp, label: "Performance" },
+  { id: "settings", path: "/settings", icon: Settings, label: "Configuration" },
 ];
 
 export default function Sidebar() {
+  const [location] = useLocation();
+  
+  // Get real-time system status
+  const { data: providers } = useQuery({
+    queryKey: ['/api/campaigns/providers'],
+    refetchInterval: 60000
+  });
+
+  const getSystemStatus = () => {
+    if (!providers) return [];
+    
+    return [
+      { 
+        name: "Gemini API", 
+        status: providers.gemini?.available ? "active" : "error" 
+      },
+      { 
+        name: "Meta Ads API", 
+        status: providers.meta?.available ? "active" : "error" 
+      },
+      { 
+        name: "TikTok Ads API", 
+        status: providers.tiktok?.available ? "active" : "error" 
+      },
+      { 
+        name: "Optimization Engine", 
+        status: providers.optimization?.available ? "active" : "error" 
+      },
+    ];
+  };
+
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-card border-r border-border z-50">
       <div className="p-6">
@@ -33,27 +59,31 @@ export default function Sidebar() {
         
         {/* Navigation */}
         <nav className="space-y-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                item.active 
-                  ? "bg-accent text-accent-foreground" 
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-              }`}
-              data-testid={`nav-${item.id}`}
-            >
-              <item.icon className="w-5 h-5" />
-              <span>{item.label}</span>
-            </button>
-          ))}
+          {navItems.map((item) => {
+            const isActive = location === item.path;
+            return (
+              <Link key={item.id} href={item.path}>
+                <button
+                  className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+                    isActive 
+                      ? "bg-accent text-accent-foreground" 
+                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
+                  data-testid={`nav-${item.id}`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </button>
+              </Link>
+            );
+          })}
         </nav>
         
-        {/* System Status */}
+        {/* Real System Status */}
         <div className="mt-8 p-4 bg-muted rounded-lg">
           <h3 className="text-sm font-medium text-foreground mb-2">System Status</h3>
           <div className="space-y-2 text-sm">
-            {systemStatus.map((service) => (
+            {getSystemStatus().map((service) => (
               <div key={service.name} className="flex items-center">
                 <span className={`status-dot status-${service.status}`}></span>
                 <span className="text-muted-foreground" data-testid={`status-${service.name.toLowerCase().replace(/\s+/g, '-')}`}>
