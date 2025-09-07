@@ -1,6 +1,6 @@
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
-import stealth from 'puppeteer-extra-plugin-stealth';
-import UserAgent from 'user-agents';
+// import stealth from 'puppeteer-extra-plugin-stealth';
+// import UserAgent from 'user-agents';
 import { storage } from '../storage';
 
 export interface BrowserSession {
@@ -19,6 +19,24 @@ export interface LoginCredentials {
   username: string;
   password: string;
   platform: 'tiktok' | 'instagram';
+  proxy?: {
+    server: string;
+    username?: string;
+    password?: string;
+  };
+}
+
+export interface AccountCreationData {
+  email: string;
+  username: string;
+  password: string;
+  platform: 'tiktok' | 'instagram';
+  fullName?: string;
+  dateOfBirth?: {
+    day: number;
+    month: number;
+    year: number;
+  };
   proxy?: {
     server: string;
     username?: string;
@@ -51,7 +69,7 @@ export class BrowserAutomationService {
    * Create stealth browser instance with anti-detection measures
    */
   async createStealthBrowser(sessionId: string, proxy?: any): Promise<Browser> {
-    const userAgent = new UserAgent({ deviceCategory: 'desktop' });
+    const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
     
     const browser = await chromium.launch({
       headless: true, // Set to false for debugging
@@ -76,14 +94,14 @@ export class BrowserAutomationService {
         '--enable-automation',
         '--password-store=basic',
         '--use-mock-keychain',
-        `--user-agent=${userAgent.toString()}`,
+        `--user-agent=${userAgent}`,
         ...(proxy ? [`--proxy-server=${proxy.server}`] : [])
       ]
     });
 
     // Create context with anti-detection measures
     const context = await browser.newContext({
-      userAgent: userAgent.toString(),
+      userAgent: userAgent,
       viewport: { width: 1920, height: 1080 },
       locale: 'en-US',
       timezoneId: 'America/New_York',
@@ -112,7 +130,7 @@ export class BrowserAutomationService {
       const originalQuery = window.navigator.permissions.query;
       window.navigator.permissions.query = (parameters: any) => (
         parameters.name === 'notifications' ?
-          Promise.resolve({ state: Notification.permission }) :
+          Promise.resolve({ state: Notification.permission, name: 'notifications', onchange: null } as any) :
           originalQuery(parameters)
       );
 
@@ -131,6 +149,212 @@ export class BrowserAutomationService {
     this.contexts.set(sessionId, context);
     
     return browser;
+  }
+
+  /**
+   * Create new TikTok account using browser automation
+   */
+  async createTikTokAccount(accountData: AccountCreationData): Promise<BrowserSession> {
+    const sessionId = `tiktok_create_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const browser = await this.createStealthBrowser(sessionId, accountData.proxy);
+    const context = this.contexts.get(sessionId)!;
+    const page = await context.newPage();
+    
+    this.pages.set(sessionId, page);
+
+    try {
+      // Navigate to TikTok signup
+      await page.goto('https://www.tiktok.com/signup/phone-or-email/email', {
+        waitUntil: 'networkidle'
+      });
+
+      // Wait for signup form
+      await page.waitForSelector('[name="email"]', { timeout: 30000 });
+
+      // Fill email
+      await page.fill('[name="email"]', accountData.email);
+      await page.waitForTimeout(1000 + Math.random() * 2000);
+
+      // Fill password
+      await page.fill('[type="password"]', accountData.password);
+      await page.waitForTimeout(1000 + Math.random() * 2000);
+
+      // Handle date of birth if provided
+      if (accountData.dateOfBirth) {
+        await page.selectOption('[data-e2e="birthday-month"]', String(accountData.dateOfBirth.month));
+        await page.selectOption('[data-e2e="birthday-day"]', String(accountData.dateOfBirth.day));
+        await page.selectOption('[data-e2e="birthday-year"]', String(accountData.dateOfBirth.year));
+      }
+
+      // Submit signup
+      await page.click('[data-e2e="signup-button"]');
+      
+      // Wait for email verification or account completion
+      try {
+        await page.waitForURL('https://www.tiktok.com/foryou*', { timeout: 60000 });
+      } catch {
+        // Check for email verification
+        const needsVerification = await page.locator('[data-e2e="verification-code-input"]').count() > 0;
+        if (needsVerification) {
+          throw new Error('Email verification required - please check email and complete manually');
+        }
+      }
+
+      // Set username if account creation succeeded
+      if (accountData.username) {
+        try {
+          await page.goto('https://www.tiktok.com/setting/account', { waitUntil: 'networkidle' });
+          await page.waitForSelector('[data-e2e="username-input"]', { timeout: 10000 });
+          await page.fill('[data-e2e="username-input"]', accountData.username);
+          await page.click('[data-e2e="save-username"]');
+          await page.waitForTimeout(2000);
+        } catch {
+          // Username setting failed, continue with email-based account
+        }
+      }
+
+      // Extract session data
+      const cookies = await context.cookies();
+      const sessionData = await page.evaluate(() => ({
+        localStorage: { ...localStorage },
+        sessionStorage: { ...sessionStorage }
+      }));
+
+      const session: BrowserSession = {
+        id: sessionId,
+        platform: 'tiktok',
+        username: accountData.username || accountData.email,
+        cookies,
+        sessionData,
+        userAgent: await page.evaluate(() => navigator.userAgent),
+        isActive: true,
+        lastActivity: new Date(),
+        createdAt: new Date()
+      };
+
+      // Store session
+      await storage.createBrowserSession(session);
+
+      await storage.createAutomationLog({
+        type: 'browser_signup',
+        message: `Successfully created TikTok account: ${accountData.username || accountData.email}`,
+        status: 'success',
+        workflowId: null,
+        metadata: { platform: 'tiktok', username: accountData.username || accountData.email, sessionId }
+      });
+
+      return session;
+      
+    } catch (error) {
+      await this.cleanupSession(sessionId);
+      await storage.createAutomationLog({
+        type: 'browser_signup',
+        message: `Failed to create TikTok account: ${error}`,
+        status: 'error',
+        workflowId: null,
+        metadata: { platform: 'tiktok', error: String(error) }
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Create new Instagram account using browser automation
+   */
+  async createInstagramAccount(accountData: AccountCreationData): Promise<BrowserSession> {
+    const sessionId = `instagram_create_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const browser = await this.createStealthBrowser(sessionId, accountData.proxy);
+    const context = this.contexts.get(sessionId)!;
+    const page = await context.newPage();
+    
+    this.pages.set(sessionId, page);
+
+    try {
+      // Navigate to Instagram signup
+      await page.goto('https://www.instagram.com/accounts/emailsignup/', {
+        waitUntil: 'networkidle'
+      });
+
+      // Wait for signup form
+      await page.waitForSelector('[name="emailOrPhone"]', { timeout: 30000 });
+
+      // Fill form data
+      await page.fill('[name="emailOrPhone"]', accountData.email);
+      await page.waitForTimeout(1000 + Math.random() * 2000);
+
+      await page.fill('[name="fullName"]', accountData.fullName || accountData.username);
+      await page.waitForTimeout(1000 + Math.random() * 2000);
+
+      await page.fill('[name="username"]', accountData.username);
+      await page.waitForTimeout(1000 + Math.random() * 2000);
+      
+      await page.fill('[name="password"]', accountData.password);
+      await page.waitForTimeout(1000 + Math.random() * 2000);
+
+      // Handle date of birth
+      if (accountData.dateOfBirth) {
+        await page.selectOption('[title="Month:"]', String(accountData.dateOfBirth.month));
+        await page.selectOption('[title="Day:"]', String(accountData.dateOfBirth.day));
+        await page.selectOption('[title="Year:"]', String(accountData.dateOfBirth.year));
+      }
+
+      // Submit signup
+      await page.click('[type="submit"]');
+      
+      // Wait for confirmation code or success
+      try {
+        await page.waitForURL('https://www.instagram.com/', { timeout: 60000 });
+      } catch {
+        // Check for confirmation code
+        const needsConfirmation = await page.locator('[name="email_confirmation_code"]').count() > 0;
+        if (needsConfirmation) {
+          throw new Error('Email confirmation required - please check email and complete manually');
+        }
+      }
+
+      // Extract session data
+      const cookies = await context.cookies();
+      const sessionData = await page.evaluate(() => ({
+        localStorage: { ...localStorage },
+        sessionStorage: { ...sessionStorage }
+      }));
+
+      const session: BrowserSession = {
+        id: sessionId,
+        platform: 'instagram',
+        username: accountData.username,
+        cookies,
+        sessionData,
+        userAgent: await page.evaluate(() => navigator.userAgent),
+        isActive: true,
+        lastActivity: new Date(),
+        createdAt: new Date()
+      };
+
+      // Store session
+      await storage.createBrowserSession(session);
+
+      await storage.createAutomationLog({
+        type: 'browser_signup',
+        message: `Successfully created Instagram account: ${accountData.username}`,
+        status: 'success',
+        workflowId: null,
+        metadata: { platform: 'instagram', username: accountData.username, sessionId }
+      });
+
+      return session;
+      
+    } catch (error) {
+      await this.cleanupSession(sessionId);
+      await storage.createAutomationLog({
+        type: 'browser_signup',
+        message: `Failed to create Instagram account: ${error}`,
+        status: 'error',
+        workflowId: null,
+        metadata: { platform: 'instagram', error: String(error) }
+      });
+      throw error;
+    }
   }
 
   /**
@@ -208,6 +432,7 @@ export class BrowserAutomationService {
         type: 'browser_login',
         message: `Successfully logged into TikTok: ${credentials.username}`,
         status: 'success',
+        workflowId: null,
         metadata: { platform: 'tiktok', username: credentials.username, sessionId }
       });
 
@@ -294,6 +519,7 @@ export class BrowserAutomationService {
         type: 'browser_login',
         message: `Successfully logged into Instagram: ${credentials.username}`,
         status: 'success',
+        workflowId: null,
         metadata: { platform: 'instagram', username: credentials.username, sessionId }
       });
 
@@ -381,6 +607,7 @@ export class BrowserAutomationService {
         type: 'browser_post',
         message: `Successfully posted to TikTok via browser automation`,
         status: 'success',
+        workflowId: null,
         metadata: { sessionId, postId, platform: 'tiktok' }
       });
 
@@ -391,6 +618,7 @@ export class BrowserAutomationService {
         type: 'browser_post',
         message: `Failed to post to TikTok: ${error}`,
         status: 'error',
+        workflowId: null,
         metadata: { sessionId, error: String(error) }
       });
 
@@ -440,6 +668,7 @@ export class BrowserAutomationService {
         type: 'browser_post',
         message: `Successfully posted to Instagram via browser automation`,
         status: 'success',
+        workflowId: null,
         metadata: { sessionId, postId, platform: 'instagram' }
       });
 
@@ -450,6 +679,7 @@ export class BrowserAutomationService {
         type: 'browser_post',
         message: `Failed to post to Instagram: ${error}`,
         status: 'error',
+        workflowId: null,
         metadata: { sessionId, error: String(error) }
       });
 

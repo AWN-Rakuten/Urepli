@@ -146,6 +146,73 @@ router.get('/callback/instagram', async (req, res) => {
 });
 
 /**
+ * Browser-based account creation for platforms
+ */
+router.post('/browser-create-account', async (req, res) => {
+  try {
+    const { platform, email, username, password, fullName, dateOfBirth, proxy } = req.body;
+
+    if (!['tiktok', 'instagram'].includes(platform)) {
+      return res.status(400).json({ error: 'Invalid platform' });
+    }
+
+    if (!email || !username || !password) {
+      return res.status(400).json({ error: 'Email, username, and password required' });
+    }
+
+    const accountData = {
+      platform: platform as any,
+      email,
+      username,
+      password,
+      fullName,
+      dateOfBirth,
+      proxy
+    };
+
+    const session = platform === 'tiktok' 
+      ? await browserAutomation.createTikTokAccount(accountData)
+      : await browserAutomation.createInstagramAccount(accountData);
+
+    // Create social media account record
+    const account = await storage.createSocialMediaAccount({
+      name: `${platform} - ${username} (Created)`,
+      platform: platform as any,
+      username,
+      accountType: 'unofficial',
+      isActive: true,
+      postingPriority: 1,
+      maxDailyPosts: platform === 'tiktok' ? 10 : 25,
+      automationData: {
+        sessionId: session.id,
+        cookies: session.cookies,
+        userAgent: session.userAgent,
+        lastLogin: session.createdAt,
+        accountCreated: true
+      }
+    });
+
+    res.json({
+      success: true,
+      account,
+      session: {
+        id: session.id,
+        platform: session.platform,
+        username: session.username,
+        isActive: session.isActive,
+        createdAt: session.createdAt
+      }
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: 'Account creation failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
  * Browser-based login for platforms
  */
 router.post('/browser-login', async (req, res) => {

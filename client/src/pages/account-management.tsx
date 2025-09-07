@@ -49,14 +49,30 @@ const browserLoginSchema = z.object({
   proxy: z.string().optional()
 });
 
+const accountCreationSchema = z.object({
+  platform: z.enum(['tiktok', 'instagram']),
+  email: z.string().email('Valid email is required'),
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  fullName: z.string().optional(),
+  dateOfBirth: z.object({
+    day: z.number().min(1).max(31),
+    month: z.number().min(1).max(12),
+    year: z.number().min(1900).max(2010)
+  }).optional(),
+  proxy: z.string().optional()
+});
+
 type FormData = z.infer<typeof formSchema>;
 type BrowserLoginData = z.infer<typeof browserLoginSchema>;
+type AccountCreationData = z.infer<typeof accountCreationSchema>;
 
 export default function AccountManagement() {
   const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
   const [connectMethod, setConnectMethod] = useState<'api' | 'browser'>('api');
+  const [browserAction, setBrowserAction] = useState<'login' | 'create'>('login');
   const [showBrowserForm, setShowBrowserForm] = useState(false);
   const queryClient = useQueryClient();
 
@@ -174,9 +190,47 @@ export default function AccountManagement() {
     }
   });
 
+  const createAccountForm = useForm<AccountCreationData>({
+    resolver: zodResolver(accountCreationSchema),
+    defaultValues: {
+      platform: 'tiktok',
+      email: '',
+      username: '',
+      password: '',
+      fullName: '',
+      proxy: ''
+    }
+  });
+
   const onBrowserSubmit = (data: BrowserLoginData) => {
     browserLoginMutation.mutate(data);
   };
+
+  const onCreateAccountSubmit = (data: AccountCreationData) => {
+    createAccountMutation.mutate(data);
+  };
+
+  const createAccountMutation = useMutation({
+    mutationFn: async (data: AccountCreationData) => {
+      return apiRequest('POST', '/api/oauth/browser-create-account', data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
+      setIsConnectDialogOpen(false);
+      toast({ 
+        title: 'Account created successfully!', 
+        description: 'Your new social media account has been created and connected.',
+      });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to create account', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    }
+  });
 
   const updateAccountMutation = useMutation({
     mutationFn: async ({ id, ...data }: { id: string } & Partial<FormData>) => {
@@ -615,7 +669,7 @@ export default function AccountManagement() {
                 </DialogDescription>
               </DialogHeader>
               
-              <Tabs value={connectMethod} onValueChange={(value: 'api' | 'browser') => setConnectMethod(value)}>
+              <Tabs value={connectMethod} onValueChange={setConnectMethod}>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="api" className="flex items-center gap-2">
                     <Globe className="w-4 h-4" />
@@ -670,12 +724,34 @@ export default function AccountManagement() {
                       <h3 className="font-semibold text-amber-800 dark:text-amber-200">Browser Automation</h3>
                     </div>
                     <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
-                      Uses browser automation to log in with your credentials. More flexible but requires your username and password.
+                      Uses browser automation to log in with existing credentials or create new accounts. More flexible but requires your credentials.
                     </p>
+
+                    <div className="flex gap-2 mb-4">
+                      <Button
+                        type="button"
+                        variant={browserAction === 'login' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setBrowserAction('login')}
+                        data-testid="button-browser-login"
+                      >
+                        Login to Existing Account
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={browserAction === 'create' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setBrowserAction('create')}
+                        data-testid="button-browser-create"
+                      >
+                        Create New Account
+                      </Button>
+                    </div>
                   </div>
 
-                  <Form {...browserForm}>
-                    <form onSubmit={browserForm.handleSubmit(onBrowserSubmit)} className="space-y-4">
+                  {browserAction === 'login' ? (
+                    <Form {...browserForm}>
+                      <form onSubmit={browserForm.handleSubmit(onBrowserSubmit)} className="space-y-4">
                       <FormField
                         control={browserForm.control}
                         name="platform"
@@ -771,6 +847,135 @@ export default function AccountManagement() {
                       </div>
                     </form>
                   </Form>
+                  ) : (
+                    <Form {...createAccountForm}>
+                      <form onSubmit={createAccountForm.handleSubmit(onCreateAccountSubmit)} className="space-y-4">
+                        <FormField
+                          control={createAccountForm.control}
+                          name="platform"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Platform</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-create-platform">
+                                    <SelectValue placeholder="Select platform" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="tiktok">TikTok</SelectItem>
+                                  <SelectItem value="instagram">Instagram</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={createAccountForm.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Email</FormLabel>
+                                <FormControl>
+                                  <Input {...field} type="email" placeholder="your@email.com" data-testid="input-create-email" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={createAccountForm.control}
+                            name="username"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Username</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="@username" data-testid="input-create-username" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={createAccountForm.control}
+                            name="password"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Password</FormLabel>
+                                <FormControl>
+                                  <Input {...field} type="password" placeholder="Secure password" data-testid="input-create-password" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
+                          <FormField
+                            control={createAccountForm.control}
+                            name="fullName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Full Name (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input {...field} placeholder="Your full name" data-testid="input-create-fullname" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <FormField
+                          control={createAccountForm.control}
+                          name="proxy"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Proxy (Optional)</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="http://proxy:port or socks5://proxy:port" data-testid="input-create-proxy" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setIsConnectDialogOpen(false)}
+                            data-testid="button-cancel-create"
+                          >
+                            Cancel
+                          </Button>
+                          <Button 
+                            type="submit" 
+                            disabled={createAccountMutation.isPending}
+                            data-testid="button-create-account"
+                          >
+                            {createAccountMutation.isPending ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                Creating Account...
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Create Account
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  )}
                 </TabsContent>
               </Tabs>
             </DialogContent>
