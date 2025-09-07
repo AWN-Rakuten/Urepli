@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertSocialMediaAccountSchema } from '@shared/schema';
@@ -27,7 +28,13 @@ import {
   Users,
   TrendingUp,
   Eye,
-  RefreshCw
+  RefreshCw,
+  ExternalLink,
+  Globe,
+  Monitor,
+  Shield,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
@@ -35,13 +42,53 @@ const formSchema = insertSocialMediaAccountSchema.extend({
   automationDataString: z.string().optional()
 });
 
+const browserLoginSchema = z.object({
+  platform: z.enum(['tiktok', 'instagram']),
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required'),
+  proxy: z.string().optional()
+});
+
 type FormData = z.infer<typeof formSchema>;
+type BrowserLoginData = z.infer<typeof browserLoginSchema>;
 
 export default function AccountManagement() {
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isConnectDialogOpen, setIsConnectDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
+  const [connectMethod, setConnectMethod] = useState<'api' | 'browser'>('api');
+  const [showBrowserForm, setShowBrowserForm] = useState(false);
   const queryClient = useQueryClient();
+
+  // Handle OAuth callback success/error from URL params
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const success = urlParams.get('success');
+    const error = urlParams.get('error');
+    const accountId = urlParams.get('accountId');
+
+    if (success) {
+      toast({
+        title: "Account Connected!",
+        description: success,
+      });
+      // Clear URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
+    }
+
+    if (error) {
+      toast({
+        title: "Connection Failed",
+        description: decodeURIComponent(error),
+        variant: "destructive",
+      });
+      // Clear URL params
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [queryClient]);
 
   const { data: accountsResponse, isLoading } = useQuery({
     queryKey: ['/api/social-media/accounts', selectedPlatform !== 'all' ? selectedPlatform : undefined],
@@ -61,24 +108,132 @@ export default function AccountManagement() {
     }
   });
 
-  const createAccountMutation = useMutation({
-    mutationFn: async (data: FormData) => {
+  // Get available OAuth platforms
+  const { data: platformsData } = useQuery({
+    queryKey: ['/api/oauth/platforms'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/oauth/platforms');
+      return response.json();
+    }
+  });
+
+  // OAuth connection mutation
+  const connectOAuthMutation = useMutation({
+    mutationFn: async ({ platform, userId }: { platform: string; userId?: string }) => {
+      const response = await apiRequest('POST', `/api/oauth/connect/${platform}`, { userId });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.authUrl) {
+        // Redirect to OAuth provider
+        window.location.href = data.authUrl;
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Connection Failed",
+        description: error.message || "Failed to initiate OAuth connection",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Browser login mutation
+  const browserLoginMutation = useMutation({
+    mutationFn: async (data: BrowserLoginData) => {
+      const response = await apiRequest('POST', '/api/oauth/browser-login', data);
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Account Connected!",
+        description: `Successfully connected ${data.account.platform} account via browser automation`,
+      });
+      setIsConnectDialogOpen(false);
+      setShowBrowserForm(false);
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Browser Login Failed",
+        description: error.message || "Failed to connect account via browser",
+        variant: "destructive",
+      });
+    }
+  });
+
+  // Create browser login form
+  const browserForm = useForm<BrowserLoginData>({
+    resolver: zodResolver(browserLoginSchema),
+    defaultValues: {
+      platform: 'tiktok',
+      username: '',
+      password: '',
+      proxy: ''
+    }
+  });
+
+  const onBrowserSubmit = (data: BrowserLoginData) => {
+    browserLoginMutation.mutate(data);
+  };
+
+  const updateAccountMutation = useMutation({
+    mutationFn: async ({ id, ...data }: { id: string } & Partial<FormData>) => {
       const { automationDataString, ...accountData } = data;
       const payload = {
         ...accountData,
-        automationData: automationDataString ? JSON.parse(automationDataString) : null
+        ...(automationDataString !== undefined && {
+          automationData: automationDataString ? JSON.parse(automationDataString) : null
+        })
       };
-      return apiRequest('POST', '/api/social-media/accounts', payload);
+      return apiRequest('PATCH', `/api/social-media/accounts/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
-      setIsAddDialogOpen(false);
-      toast({ title: 'Account created successfully' });
+      setEditingAccount(null);
+      toast({ title: 'Account updated successfully' });
     },
     onError: (error: any) => {
       toast({ 
-        title: 'Failed to create account', 
+        title: 'Failed to update account', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    }
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: async (id: string) => {
+      return apiRequest('DELETE', `/api/social-media/accounts/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
+      toast({ title: 'Account deleted successfully' });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to delete account', 
+        description: error.message, 
+        variant: 'destructive' 
+      });
+    }
+  });
+
+  const validateAccountsMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/social-media/validate-all');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
+      toast({ title: 'All accounts validated successfully' });
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: 'Failed to validate accounts', 
         description: error.message, 
         variant: 'destructive' 
       });
@@ -445,7 +600,7 @@ export default function AccountManagement() {
               type="button" 
               variant="outline" 
               onClick={() => {
-                setIsAddDialogOpen(false);
+                setIsConnectDialogOpen(false);
                 setEditingAccount(null);
               }}
               data-testid="button-cancel"
@@ -503,21 +658,179 @@ export default function AccountManagement() {
             <RefreshCw className={`w-4 h-4 mr-2 ${validateAccountsMutation.isPending ? 'animate-spin' : ''}`} />
             Validate All
           </Button>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isConnectDialogOpen} onOpenChange={setIsConnectDialogOpen}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-account">
+              <Button data-testid="button-connect-account">
                 <Plus className="w-4 h-4 mr-2" />
-                Add Account
+                Connect Account
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Add New Account</DialogTitle>
+                <DialogTitle>Connect Social Media Account</DialogTitle>
+                <DialogDescription>
+                  Connect your TikTok or Instagram account using official API or browser automation
+                </DialogDescription>
               </DialogHeader>
-              <AccountForm 
-                onSubmit={(data) => createAccountMutation.mutate(data)}
-                isLoading={createAccountMutation.isPending}
-              />
+              
+              <Tabs value={connectMethod} onValueChange={(value: 'api' | 'browser') => setConnectMethod(value)}>
+                <TabsList className="grid w-full grid-cols-2 mb-4">
+                  <TabsTrigger value="api" className="flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Official API
+                  </TabsTrigger>
+                  <TabsTrigger value="browser" className="flex items-center gap-2">
+                    <Monitor className="w-4 h-4" />
+                    Browser Automation
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="api" className="space-y-4">
+                  <div className="bg-blue-50 dark:bg-blue-950 p-4 rounded-lg border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Shield className="w-5 h-5 text-blue-600" />
+                      <h3 className="font-semibold text-blue-800 dark:text-blue-200">Official API Connection</h3>
+                    </div>
+                    <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                      Most reliable method. Uses official platform APIs with proper OAuth authentication.
+                    </p>
+                    <div className="space-y-3">
+                      {platformsData?.platforms?.filter((p: any) => p.configured).map((platform: any) => (
+                        <Button
+                          key={platform.platform}
+                          onClick={() => connectOAuthMutation.mutate({ platform: platform.platform })}
+                          disabled={connectOAuthMutation.isPending}
+                          className="w-full"
+                          data-testid={`button-oauth-${platform.platform}`}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Connect {platform.platform === 'tiktok' ? 'TikTok' : 'Instagram'} Account
+                          {connectOAuthMutation.isPending && ' (Redirecting...)'}
+                        </Button>
+                      ))}
+                      
+                      {(!platformsData?.platforms || platformsData.platforms.filter((p: any) => p.configured).length === 0) && (
+                        <div className="text-center py-4">
+                          <AlertTriangle className="w-8 h-8 mx-auto text-amber-500 mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            No platform APIs are configured. Browser automation is available as an alternative.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="browser" className="space-y-4">
+                  <div className="bg-amber-50 dark:bg-amber-950 p-4 rounded-lg border">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Monitor className="w-5 h-5 text-amber-600" />
+                      <h3 className="font-semibold text-amber-800 dark:text-amber-200">Browser Automation</h3>
+                    </div>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
+                      Uses browser automation to log in with your credentials. More flexible but requires your username and password.
+                    </p>
+                  </div>
+
+                  <Form {...browserForm}>
+                    <form onSubmit={browserForm.handleSubmit(onBrowserSubmit)} className="space-y-4">
+                      <FormField
+                        control={browserForm.control}
+                        name="platform"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Platform</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger data-testid="select-browser-platform">
+                                  <SelectValue placeholder="Select platform" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="tiktok">TikTok</SelectItem>
+                                <SelectItem value="instagram">Instagram</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={browserForm.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username/Email</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="@username or email" data-testid="input-browser-username" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={browserForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input {...field} type="password" placeholder="Password" data-testid="input-browser-password" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={browserForm.control}
+                        name="proxy"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Proxy (Optional)</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="http://proxy:port or socks5://proxy:port" data-testid="input-browser-proxy" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="flex justify-end space-x-2">
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          onClick={() => setIsConnectDialogOpen(false)}
+                          data-testid="button-cancel-browser"
+                        >
+                          Cancel
+                        </Button>
+                        <Button 
+                          type="submit" 
+                          disabled={browserLoginMutation.isPending}
+                          data-testid="button-connect-browser"
+                        >
+                          {browserLoginMutation.isPending ? (
+                            <>
+                              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              Connecting...
+                            </>
+                          ) : (
+                            <>
+                              <Wifi className="w-4 h-4 mr-2" />
+                              Connect via Browser
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
         </div>
