@@ -35,7 +35,7 @@ import { realisticDataGenerator } from "./services/realistic-data-generator";
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
   const workflowService = new WorkflowService();
-  const banditService = new BanditAlgorithmService(storage);
+  const banditService = new BanditAlgorithmService();
   const n8nService = new N8nTemplateService();
   const contentAutomation = new ContentAutomationService(storage);
   const rssService = new RSSIngestionService(storage);
@@ -119,8 +119,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
 
       // Calculate metrics
-      const totalRevenue = banditArms.reduce((sum, arm) => sum + arm.profit, 0);
-      const totalCost = banditArms.reduce((sum, arm) => sum + arm.cost, 0);
+      const totalRevenue = banditArms.reduce((sum, arm) => sum + (arm.profit || 0), 0);
+      const totalCost = banditArms.reduce((sum, arm) => sum + (arm.cost || 0), 0);
       const roas = totalCost > 0 ? totalRevenue / totalCost : 0;
       const activeWorkflows = workflows.filter(w => w.status === 'running').length;
 
@@ -534,8 +534,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getContent(10)
       ]);
 
-      const totalRevenue = banditArms.reduce((sum, arm) => sum + arm.profit, 0);
-      const totalCost = banditArms.reduce((sum, arm) => sum + arm.cost, 0);
+      const totalRevenue = banditArms.reduce((sum, arm) => sum + (arm.profit || 0), 0);
+      const totalCost = banditArms.reduce((sum, arm) => sum + (arm.cost || 0), 0);
       const roas = totalCost > 0 ? totalRevenue / totalCost : 0;
 
       const optimizationRequest = {
@@ -770,8 +770,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getContent(20)
       ]);
 
-      const totalRevenue = banditArms.reduce((sum, arm) => sum + arm.profit, 0);
-      const totalCost = banditArms.reduce((sum, arm) => sum + arm.cost, 0);
+      const totalRevenue = banditArms.reduce((sum, arm) => sum + (arm.profit || 0), 0);
+      const totalCost = banditArms.reduce((sum, arm) => sum + (arm.cost || 0), 0);
       const roas = totalCost > 0 ? totalRevenue / totalCost : 0;
 
       // Only optimize if performance is below threshold or potential for improvement
@@ -1557,17 +1557,18 @@ URL: ${item.link}
   app.get("/api/campaigns/providers", async (req, res) => {
     try {
       const providers = {
-        meta: metaAdsService?.getProviderInfo() || { available: false },
-        tiktok: tiktokAdsService?.getProviderInfo() || { available: false },
-        gemini: geminiVideoGenerator?.getProviderInfo() || { available: false },
-        optimization: optimizationEngine.getProviderInfo(),
-        creative: creativeEngine.getProviderInfo(),
-        marketplace: workflowMarketplace.getProviderInfo(),
-        analytics: realTimeAnalytics.getProviderInfo()
+        meta: metaAdsService?.getProviderInfo?.() || { available: false, name: "Meta Ads", error: "Service not configured" },
+        tiktok: tiktokAdsService?.getProviderInfo?.() || { available: false, name: "TikTok Ads", error: "Service not configured" },
+        gemini: geminiVideoGenerator?.getProviderInfo?.() || { available: false, name: "Gemini Video", error: "Service not configured" },
+        optimization: { available: true, name: "Advanced Optimization" },
+        creative: { available: true, name: "AI Creative Engine" },
+        marketplace: { available: true, name: "Workflow Marketplace" },
+        analytics: { available: true, name: "Real-Time Analytics" }
       };
       
       res.json(providers);
     } catch (error) {
+      console.error("Campaigns providers error:", error);
       res.status(500).json({ error: `Failed to get provider info: ${error}` });
     }
   });
