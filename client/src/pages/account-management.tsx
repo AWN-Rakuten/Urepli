@@ -709,7 +709,7 @@ export default function AccountManagement() {
                 </DialogDescription>
               </DialogHeader>
               
-              <Tabs value={connectMethod} onValueChange={setConnectMethod}>
+              <Tabs value={connectMethod} onValueChange={(value) => setConnectMethod(value as 'api' | 'browser')}>
                 <TabsList className="grid w-full grid-cols-2 mb-4">
                   <TabsTrigger value="api" className="flex items-center gap-2">
                     <Globe className="w-4 h-4" />
