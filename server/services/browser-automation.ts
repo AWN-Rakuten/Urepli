@@ -71,9 +71,10 @@ export class BrowserAutomationService {
   async createStealthBrowser(sessionId: string, proxy?: any): Promise<Browser> {
     const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
     
-    const browser = await chromium.launch({
-      headless: true, // Set to false for debugging
-      args: [
+    try {
+      const browser = await chromium.launch({
+        headless: true, // Set to false for debugging
+        args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
         '--disable-blink-features=AutomationControlled',
@@ -149,6 +150,13 @@ export class BrowserAutomationService {
     this.contexts.set(sessionId, context);
     
     return browser;
+    
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('Host system is missing dependencies')) {
+        throw new Error('Browser automation requires additional system dependencies. In a production environment, install them with: sudo npx playwright install-deps');
+      }
+      throw error;
+    }
   }
 
   /**
@@ -179,11 +187,13 @@ export class BrowserAutomationService {
       await page.fill('[type="password"]', accountData.password);
       await page.waitForTimeout(1000 + Math.random() * 2000);
 
-      // Handle date of birth if provided
-      if (accountData.dateOfBirth) {
-        await page.selectOption('[data-e2e="birthday-month"]', String(accountData.dateOfBirth.month));
-        await page.selectOption('[data-e2e="birthday-day"]', String(accountData.dateOfBirth.day));
-        await page.selectOption('[data-e2e="birthday-year"]', String(accountData.dateOfBirth.year));
+      // Handle basic date of birth (use default values)
+      try {
+        await page.selectOption('[data-e2e="birthday-month"]', '1');
+        await page.selectOption('[data-e2e="birthday-day"]', '15'); 
+        await page.selectOption('[data-e2e="birthday-year"]', '2000');
+      } catch {
+        // Date of birth fields might not be present, continue
       }
 
       // Submit signup
@@ -291,11 +301,13 @@ export class BrowserAutomationService {
       await page.fill('[name="password"]', accountData.password);
       await page.waitForTimeout(1000 + Math.random() * 2000);
 
-      // Handle date of birth
-      if (accountData.dateOfBirth) {
-        await page.selectOption('[title="Month:"]', String(accountData.dateOfBirth.month));
-        await page.selectOption('[title="Day:"]', String(accountData.dateOfBirth.day));
-        await page.selectOption('[title="Year:"]', String(accountData.dateOfBirth.year));
+      // Handle date of birth (use default values for adult account)
+      try {
+        await page.selectOption('[title="Month:"]', '1');
+        await page.selectOption('[title="Day:"]', '15');
+        await page.selectOption('[title="Year:"]', '2000');
+      } catch {
+        // Date of birth fields might not be present, continue
       }
 
       // Submit signup

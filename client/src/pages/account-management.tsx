@@ -51,15 +51,10 @@ const browserLoginSchema = z.object({
 
 const accountCreationSchema = z.object({
   platform: z.enum(['tiktok', 'instagram']),
-  email: z.string().email('Valid email is required'),
+  email: z.string().min(1, 'Email is required').email('Valid email is required'),
   username: z.string().min(1, 'Username is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
   fullName: z.string().optional(),
-  dateOfBirth: z.object({
-    day: z.number().min(1).max(31),
-    month: z.number().min(1).max(12),
-    year: z.number().min(1900).max(2010)
-  }).optional(),
   proxy: z.string().optional()
 });
 
@@ -193,7 +188,7 @@ export default function AccountManagement() {
   const createAccountForm = useForm<AccountCreationData>({
     resolver: zodResolver(accountCreationSchema),
     defaultValues: {
-      platform: 'tiktok',
+      platform: 'tiktok' as const,
       email: '',
       username: '',
       password: '',
@@ -207,26 +202,44 @@ export default function AccountManagement() {
   };
 
   const onCreateAccountSubmit = (data: AccountCreationData) => {
+    console.log('Creating account with data:', data);
     createAccountMutation.mutate(data);
   };
 
   const createAccountMutation = useMutation({
     mutationFn: async (data: AccountCreationData) => {
+      console.log('Sending account creation request:', data);
       return apiRequest('POST', '/api/oauth/browser-create-account', data);
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
+      console.log('Account creation successful:', result);
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
       setIsConnectDialogOpen(false);
+      setBrowserAction('login');
+      createAccountForm.reset();
       toast({ 
         title: 'Account created successfully!', 
         description: 'Your new social media account has been created and connected.',
       });
     },
     onError: (error: any) => {
+      console.error('Account creation failed:', error);
+      
+      let title = 'Failed to create account';
+      let description = error.message;
+      
+      if (error.message?.includes('Browser automation service is not available')) {
+        title = 'Browser automation not available';
+        description = 'Please use the API connection method instead. Browser automation requires additional setup in production environments.';
+      } else if (error.message?.includes('system dependencies')) {
+        title = 'Browser automation setup needed';
+        description = 'Browser automation requires additional system dependencies. Please use the API method for now.';
+      }
+      
       toast({ 
-        title: 'Failed to create account', 
-        description: error.message, 
+        title, 
+        description, 
         variant: 'destructive' 
       });
     }
@@ -726,13 +739,22 @@ export default function AccountManagement() {
                     <p className="text-sm text-amber-700 dark:text-amber-300 mb-3">
                       Uses browser automation to log in with existing credentials or create new accounts. More flexible but requires your credentials.
                     </p>
+                    
+                    <div className="bg-yellow-50 dark:bg-yellow-950 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-3">
+                      <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                        <strong>Note:</strong> Browser automation requires additional system setup. If it doesn't work, please use the API connection method above.
+                      </p>
+                    </div>
 
                     <div className="flex gap-2 mb-4">
                       <Button
                         type="button"
                         variant={browserAction === 'login' ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => setBrowserAction('login')}
+                        onClick={() => {
+                          setBrowserAction('login');
+                          browserForm.reset();
+                        }}
                         data-testid="button-browser-login"
                       >
                         Login to Existing Account
@@ -741,7 +763,10 @@ export default function AccountManagement() {
                         type="button"
                         variant={browserAction === 'create' ? 'default' : 'outline'}
                         size="sm"
-                        onClick={() => setBrowserAction('create')}
+                        onClick={() => {
+                          setBrowserAction('create');
+                          createAccountForm.reset();
+                        }}
                         data-testid="button-browser-create"
                       >
                         Create New Account
@@ -872,65 +897,84 @@ export default function AccountManagement() {
                           )}
                         />
                         
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={createAccountForm.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Email</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="email" placeholder="your@email.com" data-testid="input-create-email" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={createAccountForm.control}
-                            name="username"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Username</FormLabel>
-                                <FormControl>
-                                  <Input {...field} placeholder="@username" data-testid="input-create-username" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        <FormField
+                          control={createAccountForm.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email Address</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="email" 
+                                  placeholder="Enter your email address" 
+                                  data-testid="input-create-email" 
+                                  autoComplete="email"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={createAccountForm.control}
+                          name="username"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Username</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  placeholder="Choose a username" 
+                                  data-testid="input-create-username" 
+                                  autoComplete="username"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={createAccountForm.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  type="password" 
+                                  placeholder="Create a secure password" 
+                                  data-testid="input-create-password" 
+                                  autoComplete="new-password"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={createAccountForm.control}
+                          name="fullName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name (Optional)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  {...field} 
+                                  placeholder="Enter your full name" 
+                                  data-testid="input-create-fullname" 
+                                  autoComplete="name"
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={createAccountForm.control}
-                            name="password"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Password</FormLabel>
-                                <FormControl>
-                                  <Input {...field} type="password" placeholder="Secure password" data-testid="input-create-password" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          
-                          <FormField
-                            control={createAccountForm.control}
-                            name="fullName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Full Name (Optional)</FormLabel>
-                                <FormControl>
-                                  <Input {...field} placeholder="Your full name" data-testid="input-create-fullname" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
 
                         <FormField
                           control={createAccountForm.control}
@@ -939,8 +983,15 @@ export default function AccountManagement() {
                             <FormItem>
                               <FormLabel>Proxy (Optional)</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="http://proxy:port or socks5://proxy:port" data-testid="input-create-proxy" />
+                                <Input 
+                                  {...field} 
+                                  placeholder="http://proxy:port or socks5://proxy:port" 
+                                  data-testid="input-create-proxy" 
+                                />
                               </FormControl>
+                              <FormDescription className="text-xs">
+                                Leave blank unless you need to use a specific proxy server
+                              </FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}

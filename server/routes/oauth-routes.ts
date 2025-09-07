@@ -166,7 +166,6 @@ router.post('/browser-create-account', async (req, res) => {
       username,
       password,
       fullName,
-      dateOfBirth,
       proxy
     };
 
@@ -205,9 +204,24 @@ router.post('/browser-create-account', async (req, res) => {
     });
 
   } catch (error) {
+    console.error('Browser account creation error:', error);
+    
+    let errorMessage = 'Unknown error';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      
+      // Provide helpful messages for common issues
+      if (error.message.includes('Host system is missing dependencies')) {
+        errorMessage = 'Browser automation is not fully set up. This requires a production environment with browser dependencies installed.';
+      } else if (error.message.includes('browserType.launch')) {
+        errorMessage = 'Browser automation service is not available. Please use the API connection method instead.';
+      }
+    }
+    
     res.status(500).json({
       error: 'Account creation failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
+      message: errorMessage,
+      suggestion: 'Try using the API connection method instead for now.'
     });
   }
 });
