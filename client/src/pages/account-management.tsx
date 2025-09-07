@@ -192,11 +192,12 @@ export default function AccountManagement() {
       return response.json();
     },
     onSuccess: (generatedData) => {
-      // Populate form fields with generated data (except email)
+      // Populate form fields with generated data
       console.log('Generated data:', generatedData);
       createAccountForm.setValue('username', generatedData.username);
       createAccountForm.setValue('password', generatedData.password);
       createAccountForm.setValue('fullName', generatedData.fullName);
+      // Don't auto-fill email - user should enter their own
       
       // Clear any validation errors
       createAccountForm.clearErrors();
@@ -227,6 +228,7 @@ export default function AccountManagement() {
   });
 
   const createAccountForm = useForm<AccountCreationData>({
+    resolver: zodResolver(accountCreationSchema),
     defaultValues: {
       platform: 'tiktok' as const,
       email: '',
@@ -234,27 +236,16 @@ export default function AccountManagement() {
       password: '',
       fullName: '',
       proxy: ''
-    }
-    // Removed resolver to eliminate validation blocking
+    },
+    mode: 'onSubmit'
   });
 
   const onBrowserSubmit = (data: BrowserLoginData) => {
     browserLoginMutation.mutate(data);
   };
 
-  const onCreateAccountSubmit = (data: any) => {
+  const onCreateAccountSubmit = (data: AccountCreationData) => {
     console.log('Creating account with data:', data);
-    
-    // Basic validation since we removed the resolver
-    if (!data.email || !data.username || !data.password) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in email, username, and password fields",
-        variant: "destructive"
-      });
-      return;
-    }
-    
     createAccountMutation.mutate(data);
   };
 
@@ -983,17 +974,11 @@ export default function AccountManagement() {
                               <FormLabel>Email Address</FormLabel>
                               <FormControl>
                                 <Input 
-                                  value={field.value || ''}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                  name={field.name}
-                                  ref={field.ref}
+                                  {...field}
                                   type="email" 
                                   placeholder="Enter your email address" 
                                   data-testid="input-create-email" 
                                   autoComplete="email"
-                                  disabled={false}
-                                  readOnly={false}
                                 />
                               </FormControl>
                               <FormMessage />
