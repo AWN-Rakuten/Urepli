@@ -630,6 +630,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // YAML upload endpoint
+  app.post("/api/n8n-templates/upload", async (req, res) => {
+    try {
+      const { yamlContent } = req.body;
+      
+      if (!yamlContent) {
+        return res.status(400).json({ error: "YAML content is required" });
+      }
+
+      // Parse YAML to extract basic info
+      const lines = yamlContent.split('\n');
+      const nameMatch = lines.find(line => line.includes('name:'));
+      const descMatch = lines.find(line => line.includes('description:'));
+      
+      const name = nameMatch ? nameMatch.split(':')[1].trim().replace(/['"]/g, '') : 'Imported Workflow';
+      const description = descMatch ? descMatch.split(':')[1].trim().replace(/['"]/g, '') : 'Imported from YAML file';
+
+      const template = await storage.createN8nTemplate({
+        name,
+        description,
+        category: "automation",
+        triggers: ["YAML Import"],
+        actions: ["Extracted from YAML"],
+        yamlContent,
+        status: "draft",
+        successRate: 0
+      });
+
+      await storage.createAutomationLog({
+        type: "n8n_template",
+        message: `YAML template imported: "${name}"`,
+        status: "success",
+        metadata: { templateId: template.id }
+      });
+
+      res.json(template);
+    } catch (error) {
+      console.error("Error uploading YAML template:", error);
+      res.status(500).json({ error: "Failed to upload YAML template" });
+    }
+  });
+
+  // Update template status
+  app.patch("/api/n8n-templates/:id/status", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+
+      if (!['active', 'inactive', 'draft'].includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      const template = await storage.updateN8nTemplate(id, { status });
+      
+      await storage.createAutomationLog({
+        type: "n8n_template",
+        message: `Template "${template.name}" status updated to ${status}`,
+        status: "success",
+        metadata: { templateId: id, newStatus: status }
+      });
+
+      res.json(template);
+    } catch (error) {
+      console.error("Error updating template status:", error);
+      res.status(500).json({ error: "Failed to update template status" });
+    }
+  });
+
+  // Delete template
+  app.delete("/api/n8n-templates/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const template = await storage.getN8nTemplate(id);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      await storage.deleteN8nTemplate(id);
+      
+      await storage.createAutomationLog({
+        type: "n8n_template",
+        message: `Template "${template.name}" deleted`,
+        status: "success",
+        metadata: { templateId: id }
+      });
+
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting template:", error);
+      res.status(500).json({ error: "Failed to delete template" });
+    }
+  });
+
   // Auto-optimization endpoint - triggered by n8n workflow
   app.post("/api/n8n-templates/auto-optimize", async (req, res) => {
     try {

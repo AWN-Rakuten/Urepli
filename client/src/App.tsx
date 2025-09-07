@@ -11,6 +11,8 @@ import PerformancePage from "@/pages/performance";
 import ConfigurationPage from "@/pages/configuration";
 import AccountManagement from "@/pages/account-management";
 import ApiSetupGuide from "@/pages/api-setup-guide";
+import Documentation from "@/pages/documentation";
+import N8nTemplates from "@/pages/n8n-templates";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -23,6 +25,8 @@ function Router() {
       <Route path="/performance" component={PerformancePage} />
       <Route path="/accounts" component={AccountManagement} />
       <Route path="/api-setup" component={ApiSetupGuide} />
+      <Route path="/documentation" component={Documentation} />
+      <Route path="/n8n-templates" component={N8nTemplates} />
       <Route path="/settings" component={ConfigurationPage} />
       <Route component={NotFound} />
     </Switch>
