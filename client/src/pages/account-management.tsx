@@ -182,10 +182,13 @@ export default function AccountManagement() {
     },
     onSuccess: (generatedData) => {
       // Populate form fields with generated data (except email)
-      const currentValues = createAccountForm.getValues();
+      console.log('Generated data:', generatedData);
       createAccountForm.setValue('username', generatedData.username);
       createAccountForm.setValue('password', generatedData.password);
       createAccountForm.setValue('fullName', generatedData.fullName);
+      
+      // Clear any validation errors
+      createAccountForm.clearErrors();
       
       toast({
         title: "Account Data Generated!",
@@ -221,8 +224,15 @@ export default function AccountManagement() {
       password: '',
       fullName: '',
       proxy: ''
-    }
+    },
+    mode: 'onSubmit', // Only validate on form submission
+    reValidateMode: 'onChange' // Re-validate on change after first submission
   });
+
+  // Clear initial validation errors
+  React.useEffect(() => {
+    createAccountForm.clearErrors();
+  }, []);
 
   const onBrowserSubmit = (data: BrowserLoginData) => {
     browserLoginMutation.mutate(data);
