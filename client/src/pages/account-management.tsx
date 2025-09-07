@@ -43,14 +43,22 @@ export default function AccountManagement() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('all');
   const queryClient = useQueryClient();
 
-  const { data: accounts, isLoading } = useQuery({
-    queryKey: ['/api/social-accounts', selectedPlatform !== 'all' ? selectedPlatform : undefined],
-    queryFn: () => apiRequest(`/api/social-accounts${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`, 'GET')
+  const { data: accountsResponse, isLoading } = useQuery({
+    queryKey: ['/api/social-media/accounts', selectedPlatform !== 'all' ? selectedPlatform : undefined],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/social-media/accounts${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`);
+      return response.json();
+    }
   });
 
+  const accounts = accountsResponse?.accounts || [];
+
   const { data: healthSummary } = useQuery({
-    queryKey: ['/api/social-accounts/health/summary', selectedPlatform !== 'all' ? selectedPlatform : undefined],
-    queryFn: () => apiRequest(`/api/social-accounts/health/summary${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`, 'GET')
+    queryKey: ['/api/social-media/health/summary', selectedPlatform !== 'all' ? selectedPlatform : undefined],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/social-media/health/summary${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`);
+      return response.json();
+    }
   });
 
   const createAccountMutation = useMutation({
@@ -60,11 +68,11 @@ export default function AccountManagement() {
         ...accountData,
         automationData: automationDataString ? JSON.parse(automationDataString) : null
       };
-      return apiRequest('/api/social-accounts', 'POST', payload);
+      return apiRequest('POST', '/api/social-media/accounts', payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-accounts/health/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
       setIsAddDialogOpen(false);
       toast({ title: 'Account created successfully' });
     },
@@ -86,11 +94,11 @@ export default function AccountManagement() {
           automationData: automationDataString ? JSON.parse(automationDataString) : null
         })
       };
-      return apiRequest(`/api/social-accounts/${id}`, 'PATCH', payload);
+      return apiRequest('PATCH', `/api/social-media/accounts/${id}`, payload);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-accounts/health/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
       setEditingAccount(null);
       toast({ title: 'Account updated successfully' });
     },
@@ -105,11 +113,11 @@ export default function AccountManagement() {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/social-accounts/${id}`, 'DELETE');
+      return apiRequest('DELETE', `/api/social-media/accounts/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-accounts/health/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
       toast({ title: 'Account deleted successfully' });
     },
     onError: (error: any) => {
@@ -122,9 +130,9 @@ export default function AccountManagement() {
   });
 
   const validateAccountsMutation = useMutation({
-    mutationFn: () => apiRequest('/api/social-accounts/validate', 'POST'),
+    mutationFn: () => apiRequest('POST', '/api/social-media/validate'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
       toast({ title: 'Account validation completed' });
     },
     onError: (error: any) => {
@@ -138,7 +146,7 @@ export default function AccountManagement() {
 
   const testAccountMutation = useMutation({
     mutationFn: async (accountId: string) => {
-      return apiRequest(`/api/social-accounts/${accountId}/test`, 'POST');
+      return apiRequest('POST', `/api/social-media/accounts/${accountId}/test`);
     },
     onSuccess: (data) => {
       toast({ 
