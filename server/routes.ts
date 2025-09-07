@@ -87,10 +87,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/affiliate', affiliateRoutes);
   
   // Register social media management routes
-  app.use('/api/social', socialMediaRoutes);
-  
-  // Register social media accounts routes
-  app.use('/api/social-accounts', socialMediaRoutes);
+  console.log('Registering social media routes at /api/social-media');
+  app.use('/api/social-media', socialMediaRoutes);
+  console.log('Social media routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
