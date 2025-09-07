@@ -28,6 +28,7 @@ import googleCloudRoutes from "./routes/google-cloud-routes";
 import n8nJapaneseRoutes from "./routes/n8n-japanese-routes";
 import affiliateRoutes from "./routes/affiliate-routes";
 import socialMediaRoutes from "./routes/social-media-routes";
+import oauthRoutes from "./routes/oauth-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -90,6 +91,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('Registering social media routes at /api/social-media');
   app.use('/api/social-media', socialMediaRoutes);
   console.log('Social media routes registered successfully');
+  
+  // Register OAuth routes for real platform authentication
+  console.log('Registering OAuth routes at /api/oauth');
+  app.use('/api/oauth', oauthRoutes);
+  console.log('OAuth routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
