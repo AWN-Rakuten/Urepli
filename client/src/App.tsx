@@ -24,6 +24,7 @@ function Router() {
       <Route path="/video-generation" component={VideoGenerationPage} />
       <Route path="/performance" component={PerformancePage} />
       <Route path="/accounts" component={AccountManagement} />
+      <Route path="/account-management" component={AccountManagement} />
       <Route path="/api-setup" component={ApiSetupGuide} />
       <Route path="/documentation" component={Documentation} />
       <Route path="/n8n-templates" component={N8nTemplates} />

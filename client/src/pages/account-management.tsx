@@ -45,12 +45,12 @@ export default function AccountManagement() {
 
   const { data: accounts, isLoading } = useQuery({
     queryKey: ['/api/social-accounts', selectedPlatform !== 'all' ? selectedPlatform : undefined],
-    queryFn: () => apiRequest(`/api/social-accounts${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`)
+    queryFn: () => apiRequest(`/api/social-accounts${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`, 'GET')
   });
 
   const { data: healthSummary } = useQuery({
     queryKey: ['/api/social-accounts/health/summary', selectedPlatform !== 'all' ? selectedPlatform : undefined],
-    queryFn: () => apiRequest(`/api/social-accounts/health/summary${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`)
+    queryFn: () => apiRequest(`/api/social-accounts/health/summary${selectedPlatform !== 'all' ? `?platform=${selectedPlatform}` : ''}`, 'GET')
   });
 
   const createAccountMutation = useMutation({
@@ -60,7 +60,7 @@ export default function AccountManagement() {
         ...accountData,
         automationData: automationDataString ? JSON.parse(automationDataString) : null
       };
-      return apiRequest('/api/social-accounts', { method: 'POST', body: payload });
+      return apiRequest('/api/social-accounts', 'POST', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
@@ -86,7 +86,7 @@ export default function AccountManagement() {
           automationData: automationDataString ? JSON.parse(automationDataString) : null
         })
       };
-      return apiRequest(`/api/social-accounts/${id}`, { method: 'PATCH', body: payload });
+      return apiRequest(`/api/social-accounts/${id}`, 'PATCH', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
@@ -105,7 +105,7 @@ export default function AccountManagement() {
 
   const deleteAccountMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/social-accounts/${id}`, { method: 'DELETE' });
+      return apiRequest(`/api/social-accounts/${id}`, 'DELETE');
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
@@ -122,7 +122,7 @@ export default function AccountManagement() {
   });
 
   const validateAccountsMutation = useMutation({
-    mutationFn: () => apiRequest('/api/social-accounts/validate', { method: 'POST' }),
+    mutationFn: () => apiRequest('/api/social-accounts/validate', 'POST'),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/social-accounts'] });
       toast({ title: 'Account validation completed' });
@@ -138,12 +138,12 @@ export default function AccountManagement() {
 
   const testAccountMutation = useMutation({
     mutationFn: async (accountId: string) => {
-      return apiRequest(`/api/social-accounts/${accountId}/test`, { method: 'POST' });
+      return apiRequest(`/api/social-accounts/${accountId}/test`, 'POST');
     },
     onSuccess: (data) => {
       toast({ 
         title: 'Account test completed', 
-        description: data.canPost ? 'Account is ready for posting' : 'Account cannot post right now'
+        description: (data as any)?.canPost ? 'Account is ready for posting' : 'Account cannot post right now'
       });
     },
     onError: (error: any) => {
@@ -294,7 +294,7 @@ export default function AccountManagement() {
                     <FormItem>
                       <FormLabel>Access Token</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" data-testid="input-access-token" />
+                        <Input {...field} value={field.value || ''} type="password" data-testid="input-access-token" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -307,7 +307,7 @@ export default function AccountManagement() {
                     <FormItem>
                       <FormLabel>Refresh Token</FormLabel>
                       <FormControl>
-                        <Input {...field} type="password" data-testid="input-refresh-token" />
+                        <Input {...field} value={field.value || ''} type="password" data-testid="input-refresh-token" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -322,7 +322,7 @@ export default function AccountManagement() {
                     <FormItem>
                       <FormLabel>Business Account ID</FormLabel>
                       <FormControl>
-                        <Input {...field} data-testid="input-business-id" />
+                        <Input {...field} value={field.value || ''} data-testid="input-business-id" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -335,7 +335,7 @@ export default function AccountManagement() {
                     <FormItem>
                       <FormLabel>Advertiser Account ID</FormLabel>
                       <FormControl>
-                        <Input {...field} data-testid="input-advertiser-id" />
+                        <Input {...field} value={field.value || ''} data-testid="input-advertiser-id" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -382,6 +382,7 @@ export default function AccountManagement() {
                       type="number" 
                       min={1} 
                       max={10} 
+                      value={field.value || ''}
                       onChange={e => field.onChange(parseInt(e.target.value))}
                       data-testid="input-priority"
                     />
@@ -402,6 +403,7 @@ export default function AccountManagement() {
                       type="number" 
                       min={1} 
                       max={50}
+                      value={field.value || ''}
                       onChange={e => field.onChange(parseInt(e.target.value))}
                       data-testid="input-max-posts"
                     />
@@ -420,7 +422,7 @@ export default function AccountManagement() {
                   </div>
                   <FormControl>
                     <Switch 
-                      checked={field.value} 
+                      checked={field.value || false} 
                       onCheckedChange={field.onChange}
                       data-testid="switch-active"
                     />
@@ -522,7 +524,7 @@ export default function AccountManagement() {
                 <Users className="w-5 h-5 text-blue-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Total</p>
-                  <p className="text-2xl font-bold" data-testid="stat-total">{healthSummary.total}</p>
+                  <p className="text-2xl font-bold" data-testid="stat-total">{(healthSummary as any)?.total || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -533,7 +535,7 @@ export default function AccountManagement() {
                 <CheckCircle className="w-5 h-5 text-green-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Active</p>
-                  <p className="text-2xl font-bold text-green-600" data-testid="stat-active">{healthSummary.active}</p>
+                  <p className="text-2xl font-bold text-green-600" data-testid="stat-active">{(healthSummary as any)?.active || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -544,7 +546,7 @@ export default function AccountManagement() {
                 <XCircle className="w-5 h-5 text-red-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Suspended</p>
-                  <p className="text-2xl font-bold text-red-600" data-testid="stat-suspended">{healthSummary.suspended}</p>
+                  <p className="text-2xl font-bold text-red-600" data-testid="stat-suspended">{(healthSummary as any)?.suspended || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -555,7 +557,7 @@ export default function AccountManagement() {
                 <Clock className="w-5 h-5 text-orange-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Rate Limited</p>
-                  <p className="text-2xl font-bold text-orange-600" data-testid="stat-rate-limited">{healthSummary.rateLimited}</p>
+                  <p className="text-2xl font-bold text-orange-600" data-testid="stat-rate-limited">{(healthSummary as any)?.rateLimited || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -566,7 +568,7 @@ export default function AccountManagement() {
                 <AlertTriangle className="w-5 h-5 text-yellow-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">High Errors</p>
-                  <p className="text-2xl font-bold text-yellow-600" data-testid="stat-high-errors">{healthSummary.highError}</p>
+                  <p className="text-2xl font-bold text-yellow-600" data-testid="stat-high-errors">{(healthSummary as any)?.highError || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -577,7 +579,7 @@ export default function AccountManagement() {
                 <Activity className="w-5 h-5 text-purple-500" />
                 <div>
                   <p className="text-sm text-muted-foreground">Recent Activity</p>
-                  <p className="text-2xl font-bold text-purple-600" data-testid="stat-recent-activity">{healthSummary.recentActivity}</p>
+                  <p className="text-2xl font-bold text-purple-600" data-testid="stat-recent-activity">{(healthSummary as any)?.recentActivity || 0}</p>
                 </div>
               </div>
             </CardContent>
@@ -587,7 +589,7 @@ export default function AccountManagement() {
 
       {/* Accounts Grid */}
       <div className="grid gap-4">
-        {accounts?.map((account: any) => (
+        {(accounts as any[])?.map((account: any) => (
           <Card key={account.id} data-testid={`account-card-${account.id}`}>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -686,7 +688,7 @@ export default function AccountManagement() {
         </DialogContent>
       </Dialog>
 
-      {(!accounts || accounts.length === 0) && (
+      {(!accounts || (accounts as any[])?.length === 0) && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <Users className="w-12 h-12 text-muted-foreground mb-4" />

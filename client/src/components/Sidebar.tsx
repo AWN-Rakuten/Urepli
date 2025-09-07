@@ -26,22 +26,24 @@ export default function Sidebar() {
   const getSystemStatus = () => {
     if (!providers) return [];
     
+    const providersData = providers as any;
+    
     return [
       { 
         name: "Gemini API", 
-        status: providers.gemini?.available ? "active" : "error" 
+        status: providersData.gemini?.available ? "active" : "error" 
       },
       { 
         name: "Meta Ads API", 
-        status: providers.meta?.available ? "active" : "error" 
+        status: providersData.meta?.available ? "active" : "error" 
       },
       { 
         name: "TikTok Ads API", 
-        status: providers.tiktok?.available ? "active" : "error" 
+        status: providersData.tiktok?.available ? "active" : "error" 
       },
       { 
         name: "Optimization Engine", 
-        status: providers.optimization?.available ? "active" : "error" 
+        status: providersData.optimization?.available ? "active" : "error" 
       },
     ];
   };
