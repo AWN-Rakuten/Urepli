@@ -66,12 +66,32 @@ export class BrowserAutomationService {
   }
 
   /**
+   * Check if browser automation is available
+   */
+  async isBrowserAvailable(): Promise<boolean> {
+    try {
+      const browser = await chromium.launch({ headless: true });
+      await browser.close();
+      return true;
+    } catch (error) {
+      console.warn('Browser automation not available:', error instanceof Error ? error.message : 'Unknown error');
+      return false;
+    }
+  }
+
+  /**
    * Create stealth browser instance with anti-detection measures
    */
   async createStealthBrowser(sessionId: string, proxy?: any): Promise<Browser> {
     const userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
     
     try {
+      // Check availability first
+      const isAvailable = await this.isBrowserAvailable();
+      if (!isAvailable) {
+        throw new Error('Browser automation is not available. This may be due to missing system dependencies or running in a restricted environment.');
+      }
+
       const browser = await chromium.launch({
         headless: true, // Set to false for debugging
         args: [
