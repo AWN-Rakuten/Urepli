@@ -166,9 +166,20 @@ export default function AccountManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
     },
     onError: (error: any) => {
+      let title = "Browser Login Failed";
+      let description = error.message || "Failed to connect account via browser";
+      
+      // Check if it's a browser automation issue
+      if (error.message?.includes('Browser automation') || 
+          error.message?.includes('system dependencies') ||
+          error.message?.includes('browserType.launch')) {
+        title = 'Browser Automation Not Available';
+        description = 'Browser automation requires additional system setup. Please use the "Official API" method instead by clicking the "Official API" tab above.';
+      }
+      
       toast({
-        title: "Browser Login Failed",
-        description: error.message || "Failed to connect account via browser",
+        title,
+        description,
         variant: "destructive",
       });
     }
@@ -263,15 +274,15 @@ export default function AccountManagement() {
     onError: (error: any) => {
       console.error('Account creation failed:', error);
       
-      let title = 'Failed to create account';
-      let description = error.message;
+      let title = 'Account Creation Failed';
+      let description = error.message || 'Unknown error occurred';
       
-      if (error.message?.includes('Browser automation service is not available')) {
-        title = 'Browser automation not available';
-        description = 'Please use the API connection method instead. Browser automation requires additional setup in production environments.';
-      } else if (error.message?.includes('system dependencies')) {
-        title = 'Browser automation setup needed';
-        description = 'Browser automation requires additional system dependencies. Please use the API method for now.';
+      // Check if it's a browser automation issue
+      if (error.message?.includes('Browser automation') || 
+          error.message?.includes('system dependencies') ||
+          error.message?.includes('browserType.launch')) {
+        title = 'Browser Automation Not Available';
+        description = 'Browser automation requires additional system setup. Please use the "Official API" method instead by clicking the "Official API" tab above.';
       }
       
       toast({ 
@@ -777,9 +788,10 @@ export default function AccountManagement() {
                       Uses browser automation to log in with existing credentials or create new accounts. More flexible but requires your credentials.
                     </p>
                     
-                    <div className="bg-yellow-50 dark:bg-yellow-950 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800 mb-3">
-                      <p className="text-xs text-yellow-800 dark:text-yellow-200">
-                        <strong>Note:</strong> Browser automation requires additional system setup. If it doesn't work, please use the API connection method above.
+                    <div className="bg-red-50 dark:bg-red-950 p-3 rounded-lg border border-red-200 dark:border-red-800 mb-3">
+                      <p className="text-xs text-red-800 dark:text-red-200">
+                        <strong>⚠️ Important:</strong> Browser automation is currently not available in this environment due to missing system dependencies. 
+                        Please use the "Official API" tab above for reliable account connections.
                       </p>
                     </div>
 

@@ -230,22 +230,26 @@ router.post('/browser-create-account', async (req, res) => {
   } catch (error) {
     console.error('Browser account creation error:', error);
     
-    let errorMessage = 'Unknown error';
+    let errorMessage = 'Browser automation is not available in this environment';
+    let suggestion = 'Please use the API connection method instead';
+    
     if (error instanceof Error) {
-      errorMessage = error.message;
-      
       // Provide helpful messages for common issues
-      if (error.message.includes('Host system is missing dependencies')) {
-        errorMessage = 'Browser automation is not fully set up. This requires a production environment with browser dependencies installed.';
-      } else if (error.message.includes('browserType.launch')) {
-        errorMessage = 'Browser automation service is not available. Please use the API connection method instead.';
+      if (error.message.includes('Host system is missing dependencies') || 
+          error.message.includes('browserType.launch') ||
+          error.message.includes('Browser automation is not available')) {
+        errorMessage = 'Browser automation requires additional system dependencies that are not installed in this environment';
+        suggestion = 'Use the "Official API" tab instead to connect your accounts through the proper OAuth flow';
+      } else {
+        errorMessage = error.message;
       }
     }
     
-    res.status(500).json({
-      error: 'Account creation failed',
+    res.status(400).json({
+      error: 'Browser automation not available',
       message: errorMessage,
-      suggestion: 'Try using the API connection method instead for now.'
+      suggestion: suggestion,
+      availableAlternatives: ['Official API OAuth connection']
     });
   }
 });
@@ -263,6 +267,17 @@ router.post('/browser-login', async (req, res) => {
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password required' });
+    }
+
+    // Check if browser automation is available first
+    const isAvailable = await browserAutomation.isBrowserAvailable();
+    if (!isAvailable) {
+      return res.status(400).json({
+        error: 'Browser automation not available',
+        message: 'Browser automation requires additional system dependencies that are not installed in this environment',
+        suggestion: 'Use the "Official API" tab instead to connect your accounts through the proper OAuth flow',
+        availableAlternatives: ['Official API OAuth connection']
+      });
     }
 
     const session = platform === 'tiktok' 
