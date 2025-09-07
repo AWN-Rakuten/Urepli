@@ -1,4 +1,4 @@
-import { CloudSchedulerServiceClient } from '@google-cloud/scheduler';
+import { CloudSchedulerClient } from '@google-cloud/scheduler';
 import { Firestore } from '@google-cloud/firestore';
 import { BigQuery } from '@google-cloud/bigquery';
 import { storage } from '../storage';
@@ -74,7 +74,7 @@ export interface WorkflowTrigger {
 export class PredictiveWorkflowScheduler {
   private firestore: Firestore;
   private bigQuery: BigQuery;
-  private scheduler: CloudSchedulerServiceClient;
+  private scheduler: CloudSchedulerClient;
   private readonly PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID || 'mnp-dashboard';
   private readonly LOCATION = 'asia-northeast1';
   private readonly TIMEZONE = 'Asia/Tokyo';
@@ -87,7 +87,7 @@ export class PredictiveWorkflowScheduler {
   constructor() {
     this.firestore = new Firestore({ projectId: this.PROJECT_ID });
     this.bigQuery = new BigQuery({ projectId: this.PROJECT_ID });
-    this.scheduler = new CloudSchedulerServiceClient();
+    this.scheduler = new CloudSchedulerClient();
     this.initializePredictiveScheduling();
   }
 

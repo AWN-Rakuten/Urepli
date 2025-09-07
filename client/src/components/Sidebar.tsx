@@ -1,4 +1,4 @@
-import { Bot, BarChart3, Workflow, Video, TrendingUp, Settings, Clapperboard, Users, BookOpen, Zap } from "lucide-react";
+import { Bot, BarChart3, Workflow, Video, TrendingUp, Settings, Clapperboard, Users, BookOpen, Zap, Brain } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
@@ -10,6 +10,7 @@ const navItems = [
   { id: "performance", path: "/performance", icon: TrendingUp, label: "Performance" },
   { id: "accounts", path: "/accounts", icon: Users, label: "Accounts" },
   { id: "n8n-templates", path: "/n8n-templates", icon: Zap, label: "N8N Templates" },
+  { id: "predictive-scheduling", path: "/predictive-scheduling", icon: Brain, label: "Predictive Scheduling" },
   { id: "documentation", path: "/documentation", icon: BookOpen, label: "Documentation" },
   { id: "settings", path: "/settings", icon: Settings, label: "Configuration" },
 ];
