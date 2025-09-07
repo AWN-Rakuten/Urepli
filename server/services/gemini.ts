@@ -156,4 +156,74 @@ Provide 5-10 specific, actionable insights.`;
       throw new Error(`Failed to analyze performance data: ${error}`);
     }
   }
+
+  async generateJapaneseScript(params: {
+    topic: string;
+    targetAudience: string;
+    platform: string;
+    duration: number;
+    style: string;
+  }): Promise<{
+    title: string;
+    description: string;
+    script: string;
+    hooks: string[];
+    targetAudience: string;
+    estimatedEngagement: number;
+  }> {
+    const prompt = `記事タイトル: "${params.topic}"
+対象オーディエンス: ${params.targetAudience}
+プラットフォーム: ${params.platform}
+動画時間: ${params.duration}秒
+スタイル: ${params.style}
+
+上記に基づき、日本の視聴者向けの魅力的な動画台本を作成してください。
+
+要件:
+- ${params.duration}秒の動画に最適化
+- 日本の文化とトレンドを考慮
+- エンゲージメントとコンバージョンに焦点
+- ${params.style}スタイルを使用
+
+JSONフォーマットで回答:
+{
+  "title": "日本語のタイトル",
+  "description": "動画の説明文",
+  "script": "完全な日本語台本（タイミング指示付き）",
+  "hooks": ["使用したフック要素のリスト"],
+  "targetAudience": "具体的なオーディエンス説明",
+  "estimatedEngagement": エンゲージメントスコア(1-100)
+}`;
+
+    try {
+      const response = await this.ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              script: { type: "string" },
+              hooks: { type: "array", items: { type: "string" } },
+              targetAudience: { type: "string" },
+              estimatedEngagement: { type: "number" }
+            },
+            required: ["title", "description", "script", "hooks", "targetAudience", "estimatedEngagement"]
+          }
+        },
+        contents: prompt,
+      });
+
+      const rawJson = response.text;
+      if (!rawJson) {
+        throw new Error("Empty response from Gemini API");
+      }
+
+      return JSON.parse(rawJson);
+    } catch (error) {
+      throw new Error(`Failed to generate Japanese script: ${error}`);
+    }
+  }
 }
