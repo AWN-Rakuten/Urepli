@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { OAuthManager } from '../services/oauth-manager';
 import { BrowserAutomationService } from '../services/browser-automation';
+import { realisticDataGenerator } from '../services/realistic-data-generator';
 import { storage } from '../storage';
 
 const router = Router();
@@ -142,6 +143,29 @@ router.get('/callback/instagram', async (req, res) => {
   } catch (error) {
     console.error('Instagram OAuth callback error:', error);
     res.redirect(`/account-management?error=${encodeURIComponent(error instanceof Error ? error.message : 'OAuth failed')}`);
+  }
+});
+
+/**
+ * Generate realistic account data for form pre-population
+ */
+router.get('/generate-account-data', async (req, res) => {
+  try {
+    const count = parseInt(req.query.count as string) || 1;
+    
+    if (count === 1) {
+      const accountData = realisticDataGenerator.generateAccountData();
+      res.json(accountData);
+    } else {
+      const accountsData = realisticDataGenerator.generateMultipleAccounts(Math.min(count, 10)); // Limit to 10 max
+      res.json(accountsData);
+    }
+  } catch (error) {
+    console.error('Error generating account data:', error);
+    res.status(500).json({
+      error: 'Failed to generate account data',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 });
 

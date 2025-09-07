@@ -174,6 +174,33 @@ export default function AccountManagement() {
     }
   });
 
+  // Generate realistic account data mutation
+  const generateAccountDataMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('GET', '/api/oauth/generate-account-data');
+      return response.json();
+    },
+    onSuccess: (generatedData) => {
+      // Populate form fields with generated data (except email)
+      const currentValues = createAccountForm.getValues();
+      createAccountForm.setValue('username', generatedData.username);
+      createAccountForm.setValue('password', generatedData.password);
+      createAccountForm.setValue('fullName', generatedData.fullName);
+      
+      toast({
+        title: "Account Data Generated!",
+        description: "Realistic account information has been generated and filled in.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to Generate Data",
+        description: error.message || "Failed to generate realistic account data",
+        variant: "destructive",
+      });
+    }
+  });
+
   // Create browser login form
   const browserForm = useForm<BrowserLoginData>({
     resolver: zodResolver(browserLoginSchema),
@@ -896,6 +923,31 @@ export default function AccountManagement() {
                             </FormItem>
                           )}
                         />
+
+                        {/* Generate Account Data Button */}
+                        <div className="flex justify-center py-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => generateAccountDataMutation.mutate()}
+                            disabled={generateAccountDataMutation.isPending}
+                            className="text-sm"
+                            data-testid="button-generate-account-data"
+                          >
+                            {generateAccountDataMutation.isPending ? (
+                              <>
+                                <RefreshCw className="w-3 h-3 mr-2 animate-spin" />
+                                Generating...
+                              </>
+                            ) : (
+                              <>
+                                <RefreshCw className="w-3 h-3 mr-2" />
+                                Generate Realistic Data
+                              </>
+                            )}
+                          </Button>
+                        </div>
                         
                         <FormField
                           control={createAccountForm.control}

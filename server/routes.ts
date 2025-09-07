@@ -30,6 +30,7 @@ import affiliateRoutes from "./routes/affiliate-routes";
 import socialMediaRoutes from "./routes/social-media-routes";
 import oauthRoutes from "./routes/oauth-routes";
 import predictiveRoutes from "./routes/predictive-routes";
+import { realisticDataGenerator } from "./services/realistic-data-generator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
