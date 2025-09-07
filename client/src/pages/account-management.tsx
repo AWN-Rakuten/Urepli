@@ -4,7 +4,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -240,64 +240,6 @@ export default function AccountManagement() {
     }
   });
 
-  const updateAccountMutation = useMutation({
-    mutationFn: async ({ id, ...data }: { id: string } & Partial<FormData>) => {
-      const { automationDataString, ...accountData } = data;
-      const payload = {
-        ...accountData,
-        ...(automationDataString !== undefined && {
-          automationData: automationDataString ? JSON.parse(automationDataString) : null
-        })
-      };
-      return apiRequest('PATCH', `/api/social-media/accounts/${id}`, payload);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
-      setEditingAccount(null);
-      toast({ title: 'Account updated successfully' });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Failed to update account', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    }
-  });
-
-  const deleteAccountMutation = useMutation({
-    mutationFn: async (id: string) => {
-      return apiRequest('DELETE', `/api/social-media/accounts/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/social-media/health/summary'] });
-      toast({ title: 'Account deleted successfully' });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Failed to delete account', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    }
-  });
-
-  const validateAccountsMutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/api/social-media/validate'),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/social-media/accounts'] });
-      toast({ title: 'Account validation completed' });
-    },
-    onError: (error: any) => {
-      toast({ 
-        title: 'Failed to validate accounts', 
-        description: error.message, 
-        variant: 'destructive' 
-      });
-    }
-  });
 
   const testAccountMutation = useMutation({
     mutationFn: async (accountId: string) => {
