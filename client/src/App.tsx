@@ -14,6 +14,7 @@ import ApiSetupGuide from "@/pages/api-setup-guide";
 import Documentation from "@/pages/documentation";
 import N8nTemplates from "@/pages/n8n-templates";
 import NotFound from "@/pages/not-found";
+import PredictiveSchedulingDashboard from "@/components/PredictiveSchedulingDashboard";
 
 function Router() {
   return (
@@ -28,6 +29,7 @@ function Router() {
       <Route path="/api-setup" component={ApiSetupGuide} />
       <Route path="/documentation" component={Documentation} />
       <Route path="/n8n-templates" component={N8nTemplates} />
+      <Route path="/predictive-scheduling" component={PredictiveSchedulingDashboard} />
       <Route path="/settings" component={ConfigurationPage} />
       <Route component={NotFound} />
     </Switch>

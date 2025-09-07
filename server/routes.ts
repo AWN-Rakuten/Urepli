@@ -29,6 +29,7 @@ import n8nJapaneseRoutes from "./routes/n8n-japanese-routes";
 import affiliateRoutes from "./routes/affiliate-routes";
 import socialMediaRoutes from "./routes/social-media-routes";
 import oauthRoutes from "./routes/oauth-routes";
+import predictiveRoutes from "./routes/predictive-routes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const geminiService = new GeminiService();
@@ -96,6 +97,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('Registering OAuth routes at /api/oauth');
   app.use('/api/oauth', oauthRoutes);
   console.log('OAuth routes registered successfully');
+
+  // Register Predictive Workflow Scheduling routes
+  console.log('Registering Predictive routes at /api/predictive');
+  app.use('/api/predictive', predictiveRoutes);
+  console.log('Predictive routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
