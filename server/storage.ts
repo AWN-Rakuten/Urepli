@@ -17,6 +17,8 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { randomUUID } from "crypto";
+import type { BrowserSession } from "./services/browser-automation";
+import type { OAuthState } from "./services/oauth-manager";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -76,6 +78,24 @@ export interface IStorage {
   // Account Rotation Logs
   getAccountRotationLogs(accountId?: string, limit?: number): Promise<AccountRotationLog[]>;
   createAccountRotationLog(log: z.infer<typeof insertAccountRotationLogSchema>): Promise<AccountRotationLog>;
+  
+  // Browser Sessions
+  getBrowserSessions(activeOnly?: boolean): Promise<BrowserSession[]>;
+  getBrowserSession(id: string): Promise<BrowserSession | undefined>;
+  createBrowserSession(session: BrowserSession): Promise<BrowserSession>;
+  updateBrowserSession(id: string, updates: Partial<BrowserSession>): Promise<BrowserSession>;
+  deleteBrowserSession(id: string): Promise<boolean>;
+  
+  // OAuth States
+  createOAuthState(state: OAuthState): Promise<OAuthState>;
+  getOAuthState(state: string): Promise<OAuthState | undefined>;
+  deleteOAuthState(state: string): Promise<boolean>;
+  
+  // Posting Schedule and Counts
+  getScheduledPosts(beforeTime: Date): Promise<any[]>;
+  createPostingSchedule(schedule: any): Promise<any>;
+  updatePostingSchedule(id: string, updates: any): Promise<any>;
+  getPostCount(accountId: string, startTime: Date, endTime: Date): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -90,6 +110,9 @@ export class MemStorage implements IStorage {
   private videoGenerations: Map<string, VideoGeneration>;
   private socialMediaAccounts: Map<string, SocialMediaAccount>;
   private accountRotationLogs: Map<string, AccountRotationLog>;
+  private browserSessions: Map<string, BrowserSession>;
+  private oauthStates: Map<string, OAuthState>;
+  private postingSchedules: Map<string, any>;
 
   constructor() {
     this.users = new Map();
@@ -102,6 +125,9 @@ export class MemStorage implements IStorage {
     this.videoGenerations = new Map();
     this.socialMediaAccounts = new Map();
     this.accountRotationLogs = new Map();
+    this.browserSessions = new Map();
+    this.oauthStates = new Map();
+    this.postingSchedules = new Map();
     
     // No default data - everything comes from real operations
   }
@@ -427,6 +453,85 @@ export class MemStorage implements IStorage {
     };
     this.accountRotationLogs.set(id, newLog);
     return newLog;
+  }
+
+  // Browser Sessions methods
+  async getBrowserSessions(activeOnly = false): Promise<BrowserSession[]> {
+    const allSessions = Array.from(this.browserSessions.values());
+    return activeOnly ? allSessions.filter(session => session.isActive) : allSessions;
+  }
+
+  async getBrowserSession(id: string): Promise<BrowserSession | undefined> {
+    return this.browserSessions.get(id);
+  }
+
+  async createBrowserSession(session: BrowserSession): Promise<BrowserSession> {
+    this.browserSessions.set(session.id, session);
+    return session;
+  }
+
+  async updateBrowserSession(id: string, updates: Partial<BrowserSession>): Promise<BrowserSession> {
+    const session = this.browserSessions.get(id);
+    if (!session) {
+      throw new Error(`Browser session not found: ${id}`);
+    }
+    
+    const updated = { ...session, ...updates };
+    this.browserSessions.set(id, updated);
+    return updated;
+  }
+
+  async deleteBrowserSession(id: string): Promise<boolean> {
+    return this.browserSessions.delete(id);
+  }
+
+  // OAuth States methods
+  async createOAuthState(state: OAuthState): Promise<OAuthState> {
+    this.oauthStates.set(state.state, state);
+    return state;
+  }
+
+  async getOAuthState(state: string): Promise<OAuthState | undefined> {
+    return this.oauthStates.get(state);
+  }
+
+  async deleteOAuthState(state: string): Promise<boolean> {
+    return this.oauthStates.delete(state);
+  }
+
+  // Posting Schedule methods
+  async getScheduledPosts(beforeTime: Date): Promise<any[]> {
+    const allSchedules = Array.from(this.postingSchedules.values());
+    return allSchedules.filter(schedule => 
+      schedule.status === 'scheduled' && 
+      new Date(schedule.scheduledTime) <= beforeTime
+    );
+  }
+
+  async createPostingSchedule(schedule: any): Promise<any> {
+    this.postingSchedules.set(schedule.id, schedule);
+    return schedule;
+  }
+
+  async updatePostingSchedule(id: string, updates: any): Promise<any> {
+    const schedule = this.postingSchedules.get(id);
+    if (!schedule) {
+      throw new Error(`Posting schedule not found: ${id}`);
+    }
+    
+    const updated = { ...schedule, ...updates };
+    this.postingSchedules.set(id, updated);
+    return updated;
+  }
+
+  async getPostCount(accountId: string, startTime: Date, endTime: Date): Promise<number> {
+    const allSchedules = Array.from(this.postingSchedules.values());
+    return allSchedules.filter(schedule => 
+      schedule.accountId === accountId &&
+      new Date(schedule.scheduledTime) >= startTime &&
+      new Date(schedule.scheduledTime) <= endTime &&
+      (schedule.status === 'posted' || schedule.status === 'scheduled')
+    ).length;
   }
 }
 
