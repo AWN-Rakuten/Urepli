@@ -959,7 +959,7 @@ export default function AccountManagement() {
             <p className="text-muted-foreground text-center mb-4">
               Add your first social media account to start automated content distribution
             </p>
-            <Button onClick={() => setIsAddDialogOpen(true)} data-testid="button-add-first-account">
+            <Button onClick={() => setIsConnectDialogOpen(true)} data-testid="button-add-first-account">
               <Plus className="w-4 h-4 mr-2" />
               Add Your First Account
             </Button>
