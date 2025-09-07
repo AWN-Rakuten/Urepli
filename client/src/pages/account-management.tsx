@@ -227,7 +227,6 @@ export default function AccountManagement() {
   });
 
   const createAccountForm = useForm<AccountCreationData>({
-    resolver: zodResolver(accountCreationSchema),
     defaultValues: {
       platform: 'tiktok' as const,
       email: '',
@@ -235,22 +234,27 @@ export default function AccountManagement() {
       password: '',
       fullName: '',
       proxy: ''
-    },
-    mode: 'onSubmit', // Only validate on form submission
-    reValidateMode: 'onChange' // Re-validate on change after first submission
+    }
+    // Removed resolver to eliminate validation blocking
   });
-
-  // Clear initial validation errors
-  React.useEffect(() => {
-    createAccountForm.clearErrors();
-  }, []);
 
   const onBrowserSubmit = (data: BrowserLoginData) => {
     browserLoginMutation.mutate(data);
   };
 
-  const onCreateAccountSubmit = (data: AccountCreationData) => {
+  const onCreateAccountSubmit = (data: any) => {
     console.log('Creating account with data:', data);
+    
+    // Basic validation since we removed the resolver
+    if (!data.email || !data.username || !data.password) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in email, username, and password fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     createAccountMutation.mutate(data);
   };
 
@@ -979,11 +983,17 @@ export default function AccountManagement() {
                               <FormLabel>Email Address</FormLabel>
                               <FormControl>
                                 <Input 
-                                  {...field} 
+                                  value={field.value || ''}
+                                  onChange={field.onChange}
+                                  onBlur={field.onBlur}
+                                  name={field.name}
+                                  ref={field.ref}
                                   type="email" 
                                   placeholder="Enter your email address" 
                                   data-testid="input-create-email" 
                                   autoComplete="email"
+                                  disabled={false}
+                                  readOnly={false}
                                 />
                               </FormControl>
                               <FormMessage />
