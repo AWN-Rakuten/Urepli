@@ -119,10 +119,11 @@ export class EnhancedBrowserAutomation {
         `--user-agent=${fingerprint.userAgent}`,
       ],
       });
-    } catch (importError) {
-      throw new Error('Browser automation requires additional system setup. Please use the "Official API" method instead by clicking the "Official API" tab above.');
-    } catch (launchError) {
-      throw new Error(`Failed to launch browser: ${launchError}. Please use the "Official API" method instead.`);
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('playwright')) {
+        throw new Error('Browser automation requires additional system setup. Please use the "Official API" method instead by clicking the "Official API" tab above.');
+      }
+      throw new Error(`Failed to launch browser: ${error}. Please use the "Official API" method instead.`);
     }
 
     // Create context with fingerprint
