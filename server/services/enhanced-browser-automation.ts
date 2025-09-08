@@ -512,4 +512,302 @@ export class EnhancedBrowserAutomation {
   isInitialized(): boolean {
     return this.browser !== null && this.context !== null && this.page !== null;
   }
+
+  /**
+   * Create TikTok account using browser automation
+   */
+  async createTikTokAccount(email: string, password: string): Promise<{ success: boolean; accountId?: string; error?: string }> {
+    console.log('🎯 Starting TikTok account creation process...');
+    
+    try {
+      if (!this.page) {
+        throw new Error('Browser not launched');
+      }
+
+      // Navigate to TikTok signup page
+      console.log('🌐 Navigating to TikTok signup...');
+      await this.page.goto('https://www.tiktok.com/signup', { waitUntil: 'networkidle0' });
+      
+      // Take screenshot for debugging
+      await this.takeScreenshot('/tmp/tiktok_signup_start.png');
+      
+      // Look for signup form elements
+      console.log('🔍 Looking for signup form...');
+      
+      // Try to find email signup option
+      const emailSignupSelector = 'div[data-e2e="channel-item"]:has-text("Use email")';
+      await this.page.waitForSelector(emailSignupSelector, { timeout: 10000 }).catch(() => {
+        console.log('Email signup selector not found, trying alternative...');
+      });
+      
+      if (await this.page.$(emailSignupSelector)) {
+        await this.page.click(emailSignupSelector);
+        await this.humanDelay(1000, 2000);
+      }
+      
+      // Fill in email
+      console.log('✏️ Entering email...');
+      const emailInput = 'input[type="email"], input[placeholder*="email"], input[data-testid*="email"]';
+      await this.page.waitForSelector(emailInput, { timeout: 10000 });
+      await this.humanType(emailInput, email);
+      
+      // Fill in password  
+      console.log('🔒 Entering password...');
+      const passwordInput = 'input[type="password"], input[placeholder*="password"], input[data-testid*="password"]';
+      await this.page.waitForSelector(passwordInput, { timeout: 10000 });
+      await this.humanType(passwordInput, password);
+      
+      // Handle date of birth if required
+      console.log('📅 Handling date of birth...');
+      const dobSelectors = ['select[data-testid*="month"]', 'select[data-testid*="day"]', 'select[data-testid*="year"]'];
+      for (const selector of dobSelectors) {
+        const element = await this.page.$(selector);
+        if (element) {
+          // Set a random valid date (over 18)
+          await this.page.select(selector, '1'); // First option usually works
+          await this.humanDelay(500, 1000);
+        }
+      }
+      
+      // Handle verification code if needed
+      console.log('📧 Checking for verification requirements...');
+      const verificationCheck = await this.detectChallenge();
+      if (verificationCheck.type === 'verification') {
+        console.log('⚠️ Verification code required - manual intervention needed');
+        await this.takeScreenshot('/tmp/tiktok_verification_required.png');
+        return { 
+          success: false, 
+          error: 'Verification code required. Please check email and complete verification manually.' 
+        };
+      }
+      
+      // Submit the form
+      console.log('📤 Submitting signup form...');
+      const submitButton = 'button[type="submit"], button:has-text("Sign up"), div[data-e2e="signup-button"]';
+      await this.page.waitForSelector(submitButton, { timeout: 10000 });
+      await this.humanClick(submitButton);
+      
+      // Wait for success or error
+      await this.humanDelay(3000, 5000);
+      
+      // Take final screenshot
+      await this.takeScreenshot('/tmp/tiktok_signup_result.png');
+      
+      // Check if we're on the main TikTok page or profile setup
+      const currentUrl = this.page.url();
+      const accountCreated = currentUrl.includes('tiktok.com') && 
+                           !currentUrl.includes('signup') && 
+                           !currentUrl.includes('login');
+      
+      if (accountCreated) {
+        console.log('✅ TikTok account created successfully!');
+        const accountId = `tiktok_${Date.now()}`;
+        return { success: true, accountId };
+      } else {
+        console.log('❌ Account creation may have failed');
+        return { 
+          success: false, 
+          error: 'Account creation appears to have failed. Check screenshots for details.' 
+        };
+      }
+      
+    } catch (error) {
+      console.error('❌ TikTok account creation error:', error);
+      await this.takeScreenshot('/tmp/tiktok_signup_error.png');
+      return { 
+        success: false, 
+        error: `Account creation failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      };
+    }
+  }
+
+  /**
+   * Login to existing TikTok account
+   */
+  async loginToTikTok(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+    console.log('🔑 Starting TikTok login process...');
+    
+    try {
+      if (!this.page) {
+        throw new Error('Browser not launched');
+      }
+
+      // Navigate to TikTok login page
+      console.log('🌐 Navigating to TikTok login...');
+      await this.page.goto('https://www.tiktok.com/login', { waitUntil: 'networkidle0' });
+      
+      // Take screenshot of login page
+      await this.takeScreenshot('/tmp/tiktok_login_page.png');
+      
+      // Look for email login option
+      console.log('🔍 Looking for email login option...');
+      const emailLoginSelector = 'div[data-e2e="channel-item"]:has-text("Use email")';
+      const emailLoginElement = await this.page.$(emailLoginSelector);
+      
+      if (emailLoginElement) {
+        await this.humanClick(emailLoginSelector);
+        await this.humanDelay(1000, 2000);
+      }
+      
+      // Fill in email
+      console.log('✏️ Entering email...');
+      const emailInput = 'input[type="email"], input[placeholder*="email"], input[data-testid*="email"]';
+      await this.page.waitForSelector(emailInput, { timeout: 10000 });
+      await this.humanType(emailInput, email);
+      
+      // Fill in password
+      console.log('🔒 Entering password...');
+      const passwordInput = 'input[type="password"], input[placeholder*="password"], input[data-testid*="password"]';
+      await this.page.waitForSelector(passwordInput, { timeout: 10000 });
+      await this.humanType(passwordInput, password);
+      
+      // Submit login form
+      console.log('🚀 Submitting login...');
+      const loginButton = 'button[type="submit"], button:has-text("Log in"), div[data-e2e="login-button"]';
+      await this.page.waitForSelector(loginButton, { timeout: 10000 });
+      await this.humanClick(loginButton);
+      
+      // Wait for login to complete
+      await this.humanDelay(3000, 5000);
+      
+      // Take screenshot after login attempt
+      await this.takeScreenshot('/tmp/tiktok_login_result.png');
+      
+      // Check if login was successful
+      const currentUrl = this.page.url();
+      const isLoggedIn = currentUrl.includes('tiktok.com') && 
+                        !currentUrl.includes('login') && 
+                        !currentUrl.includes('signup');
+      
+      if (isLoggedIn) {
+        console.log('✅ TikTok login successful!');
+        return { success: true };
+      } else {
+        console.log('❌ TikTok login failed');
+        return { 
+          success: false, 
+          error: 'Login failed. Check credentials or verification requirements.' 
+        };
+      }
+      
+    } catch (error) {
+      console.error('❌ TikTok login error:', error);
+      await this.takeScreenshot('/tmp/tiktok_login_error.png');
+      return { 
+        success: false, 
+        error: `Login failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      };
+    }
+  }
+
+  /**
+   * Upload video to TikTok using browser automation
+   */
+  async uploadVideoToTikTok(videoPath: string, caption: string, hashtags: string[] = []): Promise<{ success: boolean; postId?: string; url?: string; error?: string }> {
+    console.log('🎬 Starting TikTok video upload process...');
+    
+    try {
+      if (!this.page) {
+        throw new Error('Browser not launched');
+      }
+
+      // Navigate to TikTok upload page
+      console.log('🌐 Navigating to TikTok upload page...');
+      await this.page.goto('https://www.tiktok.com/upload', { waitUntil: 'networkidle0' });
+      
+      // Take screenshot of upload page
+      await this.takeScreenshot('/tmp/tiktok_upload_page.png');
+      
+      // Find file upload input
+      console.log('📁 Looking for file upload input...');
+      const fileInput = 'input[type="file"], input[accept*="video"]';
+      await this.page.waitForSelector(fileInput, { timeout: 15000 });
+      
+      // Upload the video file
+      console.log('⬆️ Uploading video file...');
+      await this.page.setInputFiles(fileInput, videoPath);
+      
+      // Wait for video processing
+      console.log('⏳ Waiting for video processing...');
+      await this.humanDelay(5000, 8000);
+      
+      // Take screenshot after upload
+      await this.takeScreenshot('/tmp/tiktok_video_uploaded.png');
+      
+      // Fill in caption
+      console.log('✏️ Entering caption...');
+      const captionArea = 'textarea[placeholder*="caption"], div[contenteditable="true"]';
+      await this.page.waitForSelector(captionArea, { timeout: 10000 });
+      
+      const fullCaption = `${caption} ${hashtags.map(tag => `#${tag}`).join(' ')}`;
+      await this.humanType(captionArea, fullCaption);
+      
+      // Handle privacy settings
+      console.log('🔒 Setting privacy options...');
+      const publicOption = 'div[data-e2e="privacy-public"], input[value="PUBLIC_TO_EVERYONE"]';
+      const publicElement = await this.page.$(publicOption);
+      if (publicElement) {
+        await this.humanClick(publicOption);
+      }
+      
+      // Wait a moment for form to be ready
+      await this.humanDelay(2000, 3000);
+      
+      // Take screenshot before posting
+      await this.takeScreenshot('/tmp/tiktok_ready_to_post.png');
+      
+      // Find and click the post button
+      console.log('📤 Publishing video...');
+      const postButton = 'button[data-e2e="publish-button"], button:has-text("Post")';
+      await this.page.waitForSelector(postButton, { timeout: 10000 });
+      await this.humanClick(postButton);
+      
+      // Wait for posting to complete
+      console.log('⏳ Waiting for post to complete...');
+      await this.humanDelay(10000, 15000);
+      
+      // Take final screenshot
+      await this.takeScreenshot('/tmp/tiktok_post_complete.png');
+      
+      // Check for success indicators
+      const currentUrl = this.page.url();
+      const successIndicators = [
+        'video uploaded successfully',
+        'post shared',
+        '@', // Profile page indicator
+        '/video/' // Video page indicator
+      ];
+      
+      const pageContent = await this.page.content();
+      const isSuccess = successIndicators.some(indicator => 
+        currentUrl.includes(indicator) || pageContent.toLowerCase().includes(indicator)
+      );
+      
+      if (isSuccess) {
+        console.log('✅ TikTok video uploaded successfully!');
+        const postId = `tiktok_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const url = currentUrl.includes('/video/') ? currentUrl : `https://www.tiktok.com/video/${postId}`;
+        
+        return { 
+          success: true, 
+          postId, 
+          url 
+        };
+      } else {
+        console.log('❌ Video upload may have failed');
+        return { 
+          success: false, 
+          error: 'Video upload appears to have failed. Check screenshots for details.' 
+        };
+      }
+      
+    } catch (error) {
+      console.error('❌ TikTok video upload error:', error);
+      await this.takeScreenshot('/tmp/tiktok_upload_error.png');
+      return { 
+        success: false, 
+        error: `Video upload failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      };
+    }
+  }
 }
