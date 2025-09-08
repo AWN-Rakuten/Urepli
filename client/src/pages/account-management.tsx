@@ -44,16 +44,16 @@ const formSchema = insertSocialMediaAccountSchema.extend({
 
 const browserLoginSchema = z.object({
   platform: z.enum(['tiktok', 'instagram']),
-  username: z.string().min(1, 'Username is required'),
-  password: z.string().min(1, 'Password is required'),
+  username: z.string().min(1, 'Username is required').min(3, 'Username must be at least 3 characters'),
+  password: z.string().min(1, 'Password is required').min(6, 'Password must be at least 6 characters'),
   proxy: z.string().optional()
 });
 
 const accountCreationSchema = z.object({
   platform: z.enum(['tiktok', 'instagram']),
-  email: z.string().min(1, 'Email is required').email('Valid email is required'),
-  username: z.string().min(1, 'Username is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().min(1, 'Email is required').email('Please enter a valid email address (e.g., user@example.com)'),
+  username: z.string().min(1, 'Username is required').min(3, 'Username must be at least 3 characters').max(30, 'Username must be 30 characters or less'),
+  password: z.string().min(6, 'Password must be at least 6 characters').max(128, 'Password must be 128 characters or less'),
   fullName: z.string().optional(),
   proxy: z.string().optional()
 });

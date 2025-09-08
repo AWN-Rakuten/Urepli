@@ -83,9 +83,13 @@ export class EnhancedBrowserAutomation {
     // Close existing browser if open
     await this.closeBrowser();
 
-    // Launch browser with stealth configurations
-    this.browser = await chromium.launch({
-      headless: options.headless !== false,
+    // Check if browser automation is available
+    try {
+      const { chromium } = await import('playwright');
+      
+      // Launch browser with stealth configurations
+      this.browser = await chromium.launch({
+        headless: options.headless !== false,
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -114,7 +118,12 @@ export class EnhancedBrowserAutomation {
         '--use-mock-keychain',
         `--user-agent=${fingerprint.userAgent}`,
       ],
-    });
+      });
+    } catch (importError) {
+      throw new Error('Browser automation requires additional system setup. Please use the "Official API" method instead by clicking the "Official API" tab above.');
+    } catch (launchError) {
+      throw new Error(`Failed to launch browser: ${launchError}. Please use the "Official API" method instead.`);
+    }
 
     // Create context with fingerprint
     this.context = await this.browser.newContext({
