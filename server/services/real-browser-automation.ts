@@ -21,19 +21,32 @@ export class RealBrowserAutomation {
    */
   async launchBrowser(): Promise<RealBrowserResult> {
     try {
-      console.log('🚀 Launching real Chrome browser...');
+      console.log('🚀 Launching real Chromium browser...');
 
       const chromeOptions = new chrome.Options();
       
-      // Configure Chrome for automation
+      // Set the actual Chromium binary path
+      chromeOptions.setChromeBinaryPath('/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium');
+      
+      // Configure Chrome for automation - headless for now due to environment constraints
+      chromeOptions.addArguments('--headless=new');
       chromeOptions.addArguments('--no-sandbox');
       chromeOptions.addArguments('--disable-dev-shm-usage');
+      chromeOptions.addArguments('--disable-gpu');
+      chromeOptions.addArguments('--remote-debugging-port=9222');
       chromeOptions.addArguments('--disable-blink-features=AutomationControlled');
-      chromeOptions.addArguments('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+      chromeOptions.addArguments('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
       chromeOptions.addArguments('--window-size=1920,1080');
-      chromeOptions.addArguments('--start-maximized');
       chromeOptions.addArguments('--disable-web-security');
       chromeOptions.addArguments('--allow-running-insecure-content');
+      chromeOptions.addArguments('--disable-features=VizDisplayCompositor');
+      chromeOptions.addArguments('--disable-extensions');
+      chromeOptions.addArguments('--disable-default-apps');
+      chromeOptions.addArguments('--disable-background-timer-throttling');
+      chromeOptions.addArguments('--disable-background-networking');
+      chromeOptions.addArguments('--disable-backgrounding-occluded-windows');
+      chromeOptions.addArguments('--disable-renderer-backgrounding');
+      chromeOptions.addArguments('--disable-ipc-flooding-protection');
       
       // Set preferences to disable automation detection
       chromeOptions.setUserPreferences({
@@ -41,10 +54,14 @@ export class RealBrowserAutomation {
         'profile.managed_default_content_settings.images': 1
       });
 
+      // Use the service directly with no chromedriver path since it's built into selenium
+      const service = new chrome.ServiceBuilder();
+      
       // Build the driver
       this.driver = await new Builder()
         .forBrowser('chrome')
         .setChromeOptions(chromeOptions)
+        .setChromeService(service)
         .build();
 
       // Remove webdriver property to avoid detection
