@@ -30,6 +30,7 @@ import affiliateRoutes from "./routes/affiliate-routes";
 import socialMediaRoutes from "./routes/social-media-routes";
 import oauthRoutes from "./routes/oauth-routes";
 import predictiveRoutes from "./routes/predictive-routes";
+import contentPostingRoutes from "./routes/content-posting-routes";
 import { realisticDataGenerator } from "./services/realistic-data-generator";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -103,6 +104,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('Registering Predictive routes at /api/predictive');
   app.use('/api/predictive', predictiveRoutes);
   console.log('Predictive routes registered successfully');
+
+  // Register Content Posting routes
+  app.use('/api/content-posting', contentPostingRoutes);
+  console.log('Content posting routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);

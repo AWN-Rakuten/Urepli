@@ -215,8 +215,12 @@ export class InstagramApiService {
     }
 
     try {
-      // Step 1: Upload video to Instagram servers
-      const uploadResponse = await this.uploadVideoFile(upload.videoPath);
+      // Check if video URL is provided
+      if (!upload.video_url && !upload.videoPath) {
+        throw new Error('Either video_url or videoPath must be provided');
+      }
+
+      const videoUrl = upload.video_url || `file://${upload.videoPath}`;
       
       // Step 2: Create media container
       const caption = `${upload.caption}\n\n${(upload.hashtags || []).map(tag => `#${tag}`).join(' ')}`;
@@ -225,7 +229,7 @@ export class InstagramApiService {
         `${this.baseUrl}/${this.businessAccountId}/media`,
         {
           media_type: 'REELS',
-          video_url: uploadResponse.video_url,
+          video_url: videoUrl,
           caption: caption,
           access_token: this.accessToken
         }
