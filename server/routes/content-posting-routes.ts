@@ -379,4 +379,218 @@ router.post('/create-example-post', async (req, res) => {
   }
 });
 
+/**
+ * Comprehensive test of browser automation with real data
+ */
+router.post('/test-browser-automation', async (req, res) => {
+  try {
+    const { platform = 'both', useRealContent = true } = req.body;
+    
+    const testResults = {
+      timestamp: new Date().toISOString(),
+      testType: 'comprehensive_browser_automation_test',
+      browserAvailable: false,
+      realDataUsed: useRealContent,
+      results: []
+    };
+
+    // Check browser availability first
+    try {
+      const { BrowserAutomationService } = await import('../services/browser-automation');
+      const browserAutomation = new BrowserAutomationService();
+      testResults.browserAvailable = await browserAutomation.isBrowserAvailable();
+      console.log(`Browser automation available: ${testResults.browserAvailable}`);
+    } catch (error) {
+      console.log('Browser availability check failed:', error.message);
+    }
+
+    // Get real content from the system if requested
+    let testContent;
+    if (useRealContent) {
+      try {
+        // Get existing content from storage
+        const existingContent = await storage.getContent(1);
+        if (existingContent.length > 0) {
+          const realContent = existingContent[0];
+          testContent = {
+            title: realContent.title || 'Real Content Test',
+            description: realContent.description || 'Testing with real system content',
+            platforms: [platform === 'both' ? 'tiktok' : platform],
+            filePath: realContent.filePath || '/generated/content/test-video.mp4',
+            hashtags: realContent.hashtags || ['#RealTest', '#SystemContent', '#BrowserAutomation'],
+            caption: realContent.caption || 'Real content from MNP automation system'
+          };
+        } else {
+          // Generate real content using Gemini
+          const service = createPostingService(req);
+          const generatedContent = await service.generateJapaneseContent({
+            topic: 'MNP携帯乗換キャンペーン',
+            style: 'informative',
+            targetAudience: 'young_adults',
+            duration: 30
+          });
+          testContent = {
+            title: generatedContent.title,
+            description: generatedContent.description,
+            platforms: [platform === 'both' ? 'tiktok' : platform],
+            filePath: '/generated/ai-content.mp4',
+            hashtags: generatedContent.hashtags,
+            caption: generatedContent.script
+          };
+        }
+      } catch (error) {
+        console.log('Failed to get real content, using test content:', error.message);
+        testContent = {
+          title: 'Browser Automation Test',
+          description: 'Testing comprehensive browser automation',
+          platforms: [platform === 'both' ? 'tiktok' : platform],
+          filePath: '/mock/video/test.mp4',
+          hashtags: ['#BrowserTest', '#Automation', '#OpenSource']
+        };
+      }
+    } else {
+      testContent = {
+        title: 'Browser Automation Test',
+        description: 'Testing open source browser automation',
+        platforms: [platform === 'both' ? 'tiktok' : platform],
+        filePath: '/mock/video/test.mp4',
+        hashtags: ['#BrowserTest', '#Automation', '#OpenSource']
+      };
+    }
+
+    const service = createPostingService(req);
+
+    // Test TikTok browser automation
+    if (platform === 'tiktok' || platform === 'both') {
+      console.log('Testing TikTok browser automation...');
+      const tiktokContent = { ...testContent, platforms: ['tiktok'] };
+      
+      const startTime = Date.now();
+      try {
+        // Access private method for direct browser testing
+        const result = await service['postToTikTokBrowser'](tiktokContent);
+        const duration = Date.now() - startTime;
+        
+        testResults.results.push({
+          platform: 'tiktok',
+          success: true,
+          method: 'browser_direct',
+          postId: result.postId,
+          url: result.url,
+          duration: `${duration}ms`,
+          contentUsed: {
+            title: tiktokContent.title,
+            hashtags: tiktokContent.hashtags,
+            hasRealData: useRealContent
+          }
+        });
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        testResults.results.push({
+          platform: 'tiktok',
+          success: false,
+          method: 'browser_direct',
+          error: error.message,
+          duration: `${duration}ms`,
+          contentUsed: {
+            title: tiktokContent.title,
+            hashtags: tiktokContent.hashtags,
+            hasRealData: useRealContent
+          }
+        });
+      }
+    }
+
+    // Test Instagram browser automation
+    if (platform === 'instagram' || platform === 'both') {
+      console.log('Testing Instagram browser automation...');
+      const instagramContent = { ...testContent, platforms: ['instagram'] };
+      
+      const startTime = Date.now();
+      try {
+        // Access private method for direct browser testing
+        const result = await service['postToInstagramBrowser'](instagramContent);
+        const duration = Date.now() - startTime;
+        
+        testResults.results.push({
+          platform: 'instagram',
+          success: true,
+          method: 'browser_direct',
+          postId: result.postId,
+          url: result.url,
+          duration: `${duration}ms`,
+          contentUsed: {
+            title: instagramContent.title,
+            hashtags: instagramContent.hashtags,
+            hasRealData: useRealContent
+          }
+        });
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        testResults.results.push({
+          platform: 'instagram',
+          success: false,
+          method: 'browser_direct',
+          error: error.message,
+          duration: `${duration}ms`,
+          contentUsed: {
+            title: instagramContent.title,
+            hashtags: instagramContent.hashtags,
+            hasRealData: useRealContent
+          }
+        });
+      }
+    }
+
+    // Test hybrid approach (should fall back to browser when no API)
+    if (platform === 'both') {
+      console.log('Testing hybrid approach with browser fallback...');
+      const hybridContent = { ...testContent, platforms: ['tiktok', 'instagram'] };
+      
+      const startTime = Date.now();
+      try {
+        const results = await service.postToMultiplePlatforms(hybridContent);
+        const duration = Date.now() - startTime;
+        
+        testResults.results.push({
+          platform: 'hybrid_test',
+          success: true,
+          method: 'hybrid_with_browser_fallback',
+          results: results,
+          duration: `${duration}ms`,
+          contentUsed: {
+            title: hybridContent.title,
+            hashtags: hybridContent.hashtags,
+            hasRealData: useRealContent
+          }
+        });
+      } catch (error) {
+        const duration = Date.now() - startTime;
+        testResults.results.push({
+          platform: 'hybrid_test',
+          success: false,
+          method: 'hybrid_with_browser_fallback',
+          error: error.message,
+          duration: `${duration}ms`,
+          contentUsed: {
+            title: hybridContent.title,
+            hashtags: hybridContent.hashtags,
+            hasRealData: useRealContent
+          }
+        });
+      }
+    }
+
+    console.log('Browser automation test completed:', testResults);
+    res.json(testResults);
+  } catch (error) {
+    console.error('Browser automation test failed:', error);
+    res.status(500).json({ 
+      error: 'Browser automation test failed',
+      details: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 export default router;
