@@ -1,7 +1,6 @@
 import puppeteer from 'puppeteer-extra';
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import RecaptchaPlugin from 'puppeteer-extra-plugin-recaptcha';
-import UserAgent from 'user-agents';
 import { Browser, Page } from 'puppeteer-core';
 import { promises as fs } from 'fs';
 import * as path from 'path';
@@ -30,16 +29,9 @@ export class AdvancedStealthAutomation {
   private browser: Browser | null = null;
   private page: Page | null = null;
   private screenshotCounter = 0;
-  private userAgent: UserAgent;
   private deviceProfile: any;
 
   constructor() {
-    // Generate realistic mobile user agent for TikTok/Instagram
-    this.userAgent = new UserAgent({ 
-      deviceCategory: 'mobile',
-      platform: 'Android'
-    });
-    
     this.setupMobileDeviceProfile();
   }
 
@@ -47,29 +39,41 @@ export class AdvancedStealthAutomation {
    * Setup realistic mobile device profile for social media platforms
    */
   private setupMobileDeviceProfile() {
-    // Realistic Android device profiles for TikTok/Instagram
-    const androidDevices = [
+    // Realistic Android device profiles for TikTok/Instagram (2025 updated)
+    const mobileDevices = [
       {
-        name: 'Samsung Galaxy S21',
-        userAgent: 'Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+        name: 'Samsung Galaxy S24',
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-S921B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.165 Mobile Safari/537.36',
         viewport: { width: 360, height: 800, deviceScaleFactor: 3 },
         screen: { width: 1080, height: 2400 }
       },
       {
-        name: 'iPhone 13 Pro',
-        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1',
-        viewport: { width: 390, height: 844, deviceScaleFactor: 3 },
-        screen: { width: 1170, height: 2532 }
+        name: 'iPhone 15 Pro',
+        userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+        viewport: { width: 393, height: 852, deviceScaleFactor: 3 },
+        screen: { width: 1179, height: 2556 }
       },
       {
-        name: 'OnePlus 9',
-        userAgent: 'Mozilla/5.0 (Linux; Android 11; LE2117) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36',
+        name: 'Google Pixel 8',
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.165 Mobile Safari/537.36',
+        viewport: { width: 412, height: 915, deviceScaleFactor: 2.625 },
+        screen: { width: 1080, height: 2400 }
+      },
+      {
+        name: 'OnePlus 12',
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; CPH2581) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.165 Mobile Safari/537.36',
         viewport: { width: 412, height: 869, deviceScaleFactor: 2.625 },
-        screen: { width: 1080, height: 2280 }
+        screen: { width: 1080, height: 2400 }
+      },
+      {
+        name: 'Xiaomi 14',
+        userAgent: 'Mozilla/5.0 (Linux; Android 14; 2312DRA50G) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.6422.165 Mobile Safari/537.36',
+        viewport: { width: 393, height: 851, deviceScaleFactor: 2.75 },
+        screen: { width: 1080, height: 2340 }
       }
     ];
 
-    this.deviceProfile = androidDevices[Math.floor(Math.random() * androidDevices.length)];
+    this.deviceProfile = mobileDevices[Math.floor(Math.random() * mobileDevices.length)];
   }
 
   /**
