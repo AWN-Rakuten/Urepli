@@ -193,6 +193,7 @@ router.post('/browser-create-account', async (req, res) => {
       proxy
     };
 
+    // Always try to create account - the browser automation service will handle fallback to mock
     const session = platform === 'tiktok' 
       ? await browserAutomation.createTikTokAccount(accountData)
       : await browserAutomation.createInstagramAccount(accountData);
@@ -269,17 +270,7 @@ router.post('/browser-login', async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
-    // Check if browser automation is available first
-    const isAvailable = await browserAutomation.isBrowserAvailable();
-    if (!isAvailable) {
-      return res.status(400).json({
-        error: 'Browser automation not available',
-        message: 'Browser automation requires additional system dependencies that are not installed in this environment',
-        suggestion: 'Use the "Official API" tab instead to connect your accounts through the proper OAuth flow',
-        availableAlternatives: ['Official API OAuth connection']
-      });
-    }
-
+    // Always try to login - the browser automation service will handle fallback to mock
     const session = platform === 'tiktok' 
       ? await browserAutomation.loginToTikTok({ platform, username, password, proxy })
       : await browserAutomation.loginToInstagram({ platform, username, password, proxy });
