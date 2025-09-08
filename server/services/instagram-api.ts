@@ -3,8 +3,27 @@ import FormData from 'form-data';
 import * as fs from 'fs';
 import * as path from 'path';
 
+export interface InstagramConfig {
+  accessToken: string;
+  businessAccountId: string;
+  clientId?: string;
+  clientSecret?: string;
+}
+
+export interface InstagramMediaUpload {
+  image_url?: string;
+  video_url?: string;
+  caption: string;
+  media_type?: 'IMAGE' | 'VIDEO' | 'REELS';
+  hashtags?: string[];
+  location?: string;
+  published?: boolean;
+  publish_time?: string;
+}
+
 export interface InstagramReelUpload {
-  videoPath: string;
+  videoPath?: string;
+  video_url?: string;
   caption: string;
   hashtags?: string[];
   location?: string;
@@ -14,7 +33,12 @@ export interface InstagramReelResponse {
   id: string;
   permalink: string;
   status: 'processing' | 'published' | 'failed';
-  media_type: 'VIDEO';
+  media_type: 'VIDEO' | 'REELS';
+}
+
+export interface InstagramMediaContainer {
+  id: string;
+  status_code: string;
 }
 
 export interface InstagramAnalytics {
@@ -35,11 +59,154 @@ export interface InstagramAnalytics {
 export class InstagramApiService {
   private accessToken: string;
   private businessAccountId: string;
-  private baseUrl = 'https://graph.facebook.com/v18.0';
+  private baseUrl = 'https://graph.facebook.com/v19.0';
+  private authUrl = 'https://www.facebook.com/v19.0/dialog/oauth';
 
-  constructor(accessToken?: string, businessAccountId?: string) {
-    this.accessToken = accessToken || process.env.INSTAGRAM_ACCESS_TOKEN || '';
-    this.businessAccountId = businessAccountId || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || '';
+  constructor(config?: InstagramConfig) {
+    this.accessToken = config?.accessToken || process.env.INSTAGRAM_ACCESS_TOKEN || '';
+    this.businessAccountId = config?.businessAccountId || process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID || '';
+  }
+
+  /**
+   * Generate OAuth authorization URL for Instagram
+   */
+  getAuthorizationUrl(clientId: string, redirectUri: string, scope?: string): string {
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: scope || 'instagram_basic,pages_read_engagement,pages_show_list',
+      response_type: 'code'
+    });
+
+    return `${this.authUrl}?${params.toString()}`;
+  }
+
+  /**
+   * Exchange authorization code for access token
+   */
+  async getAccessToken(clientId: string, clientSecret: string, code: string, redirectUri: string): Promise<any> {
+    try {
+      const response = await axios.get('https://graph.facebook.com/v19.0/oauth/access_token', {
+        params: {
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          code
+        }
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Instagram token exchange error:', error);
+      throw new Error('Failed to exchange Instagram authorization code');
+    }
+  }
+
+  /**
+   * Get Instagram Business Account info
+   */
+  async getBusinessAccountInfo(): Promise<any> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/${this.businessAccountId}`, {
+        params: {
+          fields: 'id,username,account_type,name,profile_picture_url,followers_count,follows_count,media_count',
+          access_token: this.accessToken
+        }
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Instagram account info error:', error);
+      throw new Error('Failed to fetch Instagram account information');
+    }
+  }
+
+  /**
+   * Create media container (Step 1 of posting)
+   */
+  async createMediaContainer(mediaData: InstagramMediaUpload): Promise<InstagramMediaContainer> {
+    if (!this.accessToken || !this.businessAccountId) {
+      throw new Error('Instagram credentials not configured');
+    }
+
+    try {
+      const caption = `${mediaData.caption}\n\n${(mediaData.hashtags || []).map(tag => `#${tag}`).join(' ')}`;
+      
+      const requestData: any = {
+        caption: caption,
+        access_token: this.accessToken
+      };
+
+      // Handle different media types
+      if (mediaData.image_url) {
+        requestData.image_url = mediaData.image_url;
+      } else if (mediaData.video_url) {
+        requestData.video_url = mediaData.video_url;
+        requestData.media_type = mediaData.media_type || 'REELS';
+      }
+
+      // Scheduled publishing
+      if (mediaData.published === false && mediaData.publish_time) {
+        requestData.published = false;
+        requestData.publish_time = mediaData.publish_time;
+      }
+
+      const response = await axios.post(
+        `${this.baseUrl}/${this.businessAccountId}/media`,
+        requestData
+      );
+
+      return {
+        id: response.data.id,
+        status_code: 'SUCCESS'
+      };
+
+    } catch (error: any) {
+      console.error('Instagram media container error:', error.response?.data || error.message);
+      throw new Error(`Failed to create Instagram media container: ${error.response?.data?.error?.message || error.message}`);
+    }
+  }
+
+  /**
+   * Publish media container (Step 2 of posting)
+   */
+  async publishMediaContainer(containerId: string): Promise<InstagramReelResponse> {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/${this.businessAccountId}/media_publish`,
+        {
+          creation_id: containerId,
+          access_token: this.accessToken
+        }
+      );
+
+      return {
+        id: response.data.id,
+        permalink: `https://www.instagram.com/p/${response.data.id}`,
+        status: 'published',
+        media_type: 'REELS'
+      };
+
+    } catch (error: any) {
+      console.error('Instagram publish error:', error.response?.data || error.message);
+      throw new Error(`Failed to publish Instagram media: ${error.response?.data?.error?.message || error.message}`);
+    }
+  }
+
+  /**
+   * Complete workflow: Create and publish media
+   */
+  async uploadAndPublishMedia(mediaData: InstagramMediaUpload): Promise<InstagramReelResponse> {
+    try {
+      // Step 1: Create media container
+      const container = await this.createMediaContainer(mediaData);
+
+      // Step 2: Publish media
+      return await this.publishMediaContainer(container.id);
+    } catch (error) {
+      console.error('Instagram complete upload error:', error);
+      throw error;
+    }
   }
 
   async uploadReel(upload: InstagramReelUpload): Promise<InstagramReelResponse> {

@@ -2,11 +2,41 @@ import axios from 'axios';
 import FormData from 'form-data';
 import * as fs from 'fs';
 
+export interface TikTokConfig {
+  clientKey: string;
+  clientSecret: string;
+  redirectUri: string;
+}
+
+export interface TikTokAuthResponse {
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+  token_type: string;
+  scope: string;
+  open_id: string;
+}
+
+export interface TikTokUserInfo {
+  open_id: string;
+  username: string;
+  display_name: string;
+  avatar_url: string;
+  follower_count: number;
+  following_count: number;
+  likes_count: number;
+  video_count: number;
+}
+
 export interface TikTokVideoUpload {
   title: string;
-  description: string;
-  videoPath: string;
-  privacy: 'public' | 'private' | 'friends';
+  description?: string;
+  videoPath?: string;
+  privacy_level: 'PUBLIC_TO_EVERYONE' | 'MUTUAL_FOLLOW_FRIENDS' | 'FOLLOWER_OF_CREATOR' | 'SELF_ONLY';
+  disable_duet?: boolean;
+  disable_comment?: boolean;
+  disable_stitch?: boolean;
+  video_cover_timestamp_ms?: number;
   tags?: string[];
 }
 
@@ -18,6 +48,12 @@ export interface TikTokVideoResponse {
   likes?: number;
   shares?: number;
   comments?: number;
+}
+
+export interface TikTokUploadResponse {
+  publish_id: string;
+  status: string;
+  status_msg: string;
 }
 
 export interface TikTokAnalytics {
@@ -34,33 +70,107 @@ export interface TikTokAnalytics {
 
 export class TikTokApiService {
   private accessToken: string;
-  private baseUrl = 'https://open-api.tiktok.com';
+  private baseUrl = 'https://open.tiktokapis.com';
+  private authUrl = 'https://www.tiktok.com/v2/auth/authorize';
+  private tokenUrl = 'https://open.tiktokapis.com/v2/oauth/token/';
 
   constructor(accessToken?: string) {
     this.accessToken = accessToken || process.env.TIKTOK_ACCESS_TOKEN || '';
   }
 
-  async uploadVideo(upload: TikTokVideoUpload): Promise<TikTokVideoResponse> {
+  /**
+   * Generate OAuth authorization URL for TikTok login
+   */
+  getAuthorizationUrl(clientKey: string, redirectUri: string, state?: string): string {
+    const params = new URLSearchParams({
+      client_key: clientKey,
+      scope: 'user.info.basic,video.publish,video.upload',
+      response_type: 'code',
+      redirect_uri: redirectUri,
+      state: state || Math.random().toString(36).substring(7)
+    });
+
+    return `${this.authUrl}?${params.toString()}`;
+  }
+
+  /**
+   * Exchange authorization code for access token
+   */
+  async getAccessToken(config: TikTokConfig, code: string): Promise<TikTokAuthResponse> {
+    try {
+      const response = await axios.post(this.tokenUrl, {
+        client_key: config.clientKey,
+        client_secret: config.clientSecret,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: config.redirectUri
+      }, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+
+      if (response.data.error) {
+        throw new Error(`TikTok OAuth error: ${response.data.error_description}`);
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('TikTok token exchange error:', error);
+      throw new Error('Failed to exchange TikTok authorization code');
+    }
+  }
+
+  /**
+   * Get user information
+   */
+  async getUserInfo(accessToken: string): Promise<TikTokUserInfo> {
+    try {
+      const response = await axios.get(`${this.baseUrl}/v2/user/info/`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        },
+        params: {
+          fields: 'open_id,username,display_name,avatar_url,follower_count,following_count,likes_count,video_count'
+        }
+      });
+
+      if (response.data.error) {
+        throw new Error(`TikTok API error: ${response.data.error.message}`);
+      }
+
+      return response.data.data.user;
+    } catch (error) {
+      console.error('TikTok user info error:', error);
+      throw new Error('Failed to fetch TikTok user information');
+    }
+  }
+
+  /**
+   * Upload video using buffer or file path
+   */
+  async uploadVideo(upload: TikTokVideoUpload & { videoPath: string }): Promise<TikTokVideoResponse> {
     if (!this.accessToken) {
       throw new Error('TikTok access token not configured');
     }
 
     try {
       // Step 1: Initialize upload
+      const videoSize = fs.statSync(upload.videoPath).size;
       const initResponse = await axios.post(
         `${this.baseUrl}/v2/post/publish/video/init/`,
         {
           post_info: {
             title: upload.title,
-            privacy_level: upload.privacy.toUpperCase(),
-            disable_duet: false,
-            disable_comment: false,
-            disable_stitch: false,
-            video_cover_timestamp_ms: 1000
+            privacy_level: upload.privacy_level,
+            disable_duet: upload.disable_duet || false,
+            disable_comment: upload.disable_comment || false,
+            disable_stitch: upload.disable_stitch || false,
+            video_cover_timestamp_ms: upload.video_cover_timestamp_ms || 1000
           },
           source_info: {
             source: 'FILE_UPLOAD',
-            video_size: fs.statSync(upload.videoPath).size,
+            video_size: videoSize,
             chunk_size: 10000000,
             total_chunk_count: 1
           }
@@ -75,15 +185,15 @@ export class TikTokApiService {
 
       const { publish_id, upload_url } = initResponse.data.data;
 
-      // Step 2: Upload video file
-      const formData = new FormData();
-      formData.append('video', fs.createReadStream(upload.videoPath));
-
-      await axios.put(upload_url, formData, {
+      // Step 2: Upload video file as buffer
+      const videoBuffer = fs.readFileSync(upload.videoPath);
+      await axios.put(upload_url, videoBuffer, {
         headers: {
-          ...formData.getHeaders(),
+          'Content-Type': 'video/mp4',
           'Authorization': `Bearer ${this.accessToken}`
-        }
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
       });
 
       // Step 3: Confirm upload
@@ -106,6 +216,76 @@ export class TikTokApiService {
 
     } catch (error: any) {
       console.error('TikTok upload error:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Upload video from buffer directly
+   */
+  async uploadVideoFromBuffer(
+    videoBuffer: Buffer,
+    postInfo: TikTokVideoUpload
+  ): Promise<TikTokUploadResponse> {
+    if (!this.accessToken) {
+      throw new Error('TikTok access token not configured');
+    }
+
+    try {
+      // Step 1: Initialize upload
+      const initResponse = await axios.post(
+        `${this.baseUrl}/v2/post/publish/video/init/`,
+        {
+          post_info: postInfo,
+          source_info: {
+            source: 'FILE_UPLOAD',
+            video_size: videoBuffer.length,
+            chunk_size: 10000000,
+            total_chunk_count: Math.ceil(videoBuffer.length / 10000000)
+          }
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (initResponse.data.error) {
+        throw new Error(`TikTok upload init error: ${initResponse.data.error.message}`);
+      }
+
+      const { publish_id, upload_url } = initResponse.data.data;
+
+      // Step 2: Upload video buffer
+      await axios.put(upload_url, videoBuffer, {
+        headers: {
+          'Content-Type': 'video/mp4'
+        },
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity
+      });
+
+      // Step 3: Publish video
+      const publishResponse = await axios.post(
+        `${this.baseUrl}/v2/post/publish/`,
+        { publish_id },
+        {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (publishResponse.data.error) {
+        throw new Error(`TikTok publish error: ${publishResponse.data.error.message}`);
+      }
+
+      return publishResponse.data.data;
+    } catch (error: any) {
+      console.error('TikTok video upload error:', error.response?.data || error.message);
       throw error;
     }
   }
