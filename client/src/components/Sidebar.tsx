@@ -1,9 +1,10 @@
-import { Bot, BarChart3, Workflow, Video, TrendingUp, Settings, Clapperboard, Users, BookOpen, Zap, Brain } from "lucide-react";
+import { Bot, BarChart3, Workflow, Video, TrendingUp, Settings, Clapperboard, Users, BookOpen, Zap, Brain, Rocket } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 
 const navItems = [
   { id: "overview", path: "/", icon: BarChart3, label: "Overview" },
+  { id: "hyper-automation", path: "/hyper-automation", icon: Rocket, label: "Hyper Automation" },
   { id: "workflows", path: "/workflows", icon: Workflow, label: "Workflows" },
   { id: "content", path: "/content", icon: Video, label: "Content Library" },
   { id: "video-generation", path: "/video-generation", icon: Clapperboard, label: "Video Generation" },

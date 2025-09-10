@@ -31,6 +31,7 @@ import socialMediaRoutes from "./routes/social-media-routes";
 import oauthRoutes from "./routes/oauth-routes";
 import predictiveRoutes from "./routes/predictive-routes";
 import contentPostingRoutes from "./routes/content-posting-routes";
+import automationRoutes from "./routes/automation-routes";
 import { realisticDataGenerator } from "./services/realistic-data-generator";
 
 // Enhanced services
@@ -129,6 +130,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register Content Posting routes
   app.use('/api/content-posting', contentPostingRoutes);
   console.log('Content posting routes registered successfully');
+
+  // Register Automation routes
+  console.log('Registering Automation routes at /api/automation');
+  app.use('/api/automation', automationRoutes);
+  console.log('Automation routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
