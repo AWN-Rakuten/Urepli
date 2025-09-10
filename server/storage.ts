@@ -151,6 +151,60 @@ export class MemStorage implements IStorage {
     return user;
   }
 
+  // Get content with additional metrics
+  async getContentWithMetrics(): Promise<any[]> {
+    try {
+      return Object.values(this.content);
+    } catch (error) {
+      console.error('Error getting content with metrics:', error);
+      return [];
+    }
+  }
+
+  // Update Gemini seed performance
+  async updateGeminiSeedPerformance(seedId: string, performance: any): Promise<void> {
+    try {
+      const seed = this.geminiSeeds.get(seedId);
+      if (seed) {
+        Object.assign(seed, performance);
+      }
+    } catch (error) {
+      console.error('Error updating Gemini seed performance:', error);
+    }
+  }
+
+  // Get Gemini seeds
+  async getGeminiSeeds(): Promise<any[]> {
+    try {
+      return Array.from(this.geminiSeeds.values());
+    } catch (error) {
+      console.error('Error getting Gemini seeds:', error);
+      return [];
+    }
+  }
+
+  // Get affiliate programs
+  async getAffiliatePrograms(): Promise<any[]> {
+    try {
+      return Array.from(this.affiliatePrograms.values());
+    } catch (error) {
+      console.error('Error getting affiliate programs:', error);
+      return [];
+    }
+  }
+
+  // Update content
+  async updateContent(contentId: string, updates: any): Promise<void> {
+    try {
+      const content = this.content[contentId];
+      if (content) {
+        Object.assign(content, updates);
+      }
+    } catch (error) {
+      console.error('Error updating content:', error);
+    }
+  }
+
   async getWorkflows(): Promise<Workflow[]> {
     return Array.from(this.workflows.values());
   }
@@ -533,6 +587,7 @@ export class MemStorage implements IStorage {
       (schedule.status === 'posted' || schedule.status === 'scheduled')
     ).length;
   }
+
 }
 
 export const storage = new MemStorage();
