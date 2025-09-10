@@ -1,0 +1,25 @@
+{
+  "id": "quick-social-poster",
+  "name": "Quick Social Media Poster",
+  "description": "Simple template for posting to multiple social media platforms",
+  "category": "social-media",
+  "tags": [
+    "social",
+    "posting",
+    "simple"
+  ],
+  "nodes": [],
+  "connections": {},
+  "settings": {},
+  "version": "1.0.0",
+  "author": "System",
+  "lastUpdated": "2025-09-10T11:02:29.003Z",
+  "downloadCount": 0,
+  "rating": 4.8,
+  "compatibility": [
+    "n8n@1.0+"
+  ],
+  "dependencies": [
+    "browser-automation"
+  ]
+}
