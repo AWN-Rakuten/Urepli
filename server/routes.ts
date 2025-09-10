@@ -33,7 +33,18 @@ import predictiveRoutes from "./routes/predictive-routes";
 import contentPostingRoutes from "./routes/content-posting-routes";
 import { realisticDataGenerator } from "./services/realistic-data-generator";
 
+// Enhanced services
+import { MCPServer } from "./services/mcp-server";
+import { APILessSocialMediaAutomation } from "./services/api-less-social-automation";
+import { EnhancedN8nIntegration } from "./services/enhanced-n8n-integration";
+import { OpenSourceAnalytics } from "./services/open-source-analytics";
+import { EnhancedVideoGeneration } from "./services/enhanced-video-generation";
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize MCP Server first
+  const mcpServer = new MCPServer(3001);
+  
+  // Core services
   const geminiService = new GeminiService();
   const workflowService = new WorkflowService();
   const banditService = new BanditAlgorithmService();
@@ -48,6 +59,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const automationPipeline = new AutomationPipeline(storage);
   const adSpendManager = new AdSpendManager(storage);
   const approvalWorkflow = new HumanApprovalWorkflow(storage);
+  
+  // Enhanced services with MCP integration
+  const apiLessSocialAutomation = new APILessSocialMediaAutomation(mcpServer);
+  const enhancedN8n = new EnhancedN8nIntegration({
+    host: 'localhost',
+    port: 5678,
+    protocol: 'http'
+  }, mcpServer);
+  const openSourceAnalytics = new OpenSourceAnalytics(mcpServer);
+  const enhancedVideoGeneration = new EnhancedVideoGeneration(mcpServer);
   
   // Campaign management services
   let metaAdsService: MetaAdsService | null = null;
@@ -1798,6 +1819,218 @@ URL: ${item.link}
     } catch (error) {
       res.status(500).json({ error: `Failed to get realtime metrics: ${error}` });
     }
+  });
+
+  // Enhanced MCP Server Routes
+  app.get("/mcp/*", (req, res, next) => {
+    // MCP server handles these routes
+    next();
+  });
+
+  // Enhanced Social Media Automation Routes (API-less)
+  app.post("/api/social/browser-login", async (req, res) => {
+    try {
+      const { platform, username, password, accountId, twoFactorSecret } = req.body;
+      const success = await apiLessSocialAutomation.loginToAccount({
+        platform,
+        username,
+        password,
+        accountId,
+        twoFactorSecret
+      });
+      res.json({ success });
+    } catch (error) {
+      res.status(500).json({ error: `Login failed: ${error}` });
+    }
+  });
+
+  app.post("/api/social/browser-post", async (req, res) => {
+    try {
+      const { accountId, platform, content } = req.body;
+      const result = await apiLessSocialAutomation.postContent(accountId, platform, content);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: `Posting failed: ${error}` });
+    }
+  });
+
+  app.post("/api/social/batch-post", async (req, res) => {
+    try {
+      const { accounts, content } = req.body;
+      const results = await apiLessSocialAutomation.batchPost(accounts, content);
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: `Batch posting failed: ${error}` });
+    }
+  });
+
+  // Enhanced n8n Integration Routes
+  app.get("/api/n8n/templates/marketplace", async (req, res) => {
+    try {
+      const marketplace = await enhancedN8n.createTemplateMarketplace();
+      res.json(marketplace);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to load marketplace: ${error}` });
+    }
+  });
+
+  app.get("/api/n8n/templates/:id/copy-paste", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const copyPasteData = await enhancedN8n.generateCopyPasteTemplate(id);
+      res.json(copyPasteData);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to generate copy-paste template: ${error}` });
+    }
+  });
+
+  app.post("/api/n8n/auto-integrate", async (req, res) => {
+    try {
+      const result = await enhancedN8n.autoIntegrateSocialAccounts();
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: `Auto-integration failed: ${error}` });
+    }
+  });
+
+  app.post("/api/n8n/templates/import", async (req, res) => {
+    try {
+      const { templateData, options } = req.body;
+      const result = await enhancedN8n.importTemplate(templateData, options);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: `Template import failed: ${error}` });
+    }
+  });
+
+  app.get("/api/n8n/templates/:id/export", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const exportData = await enhancedN8n.exportTemplate(id);
+      res.json(exportData);
+    } catch (error) {
+      res.status(500).json({ error: `Template export failed: ${error}` });
+    }
+  });
+
+  app.get("/api/n8n/analytics/:templateId?", async (req, res) => {
+    try {
+      const { templateId } = req.params;
+      const analytics = await enhancedN8n.getTemplateAnalytics(templateId);
+      res.json(analytics);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to get template analytics: ${error}` });
+    }
+  });
+
+  // Open Source Analytics Routes
+  app.get("/api/analytics/report", async (req, res) => {
+    try {
+      const { start, end, interval, platforms } = req.query;
+      const timeframe = {
+        start: new Date(start as string || Date.now() - 7 * 24 * 60 * 60 * 1000),
+        end: new Date(end as string || Date.now()),
+        interval: (interval as any) || 'day'
+      };
+      const platformList = platforms ? (platforms as string).split(',') : undefined;
+      const report = await openSourceAnalytics.generateAnalyticsReport(timeframe, platformList);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to generate analytics report: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/profit/realtime", async (req, res) => {
+    try {
+      const profit = await openSourceAnalytics.calculateRealTimeProfit();
+      res.json(profit);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to calculate real-time profit: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/predictions/:timeHorizon", async (req, res) => {
+    try {
+      const { timeHorizon } = req.params;
+      const predictions = await openSourceAnalytics.generateAdvancedPredictions(timeHorizon as any);
+      res.json(predictions);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to generate predictions: ${error}` });
+    }
+  });
+
+  app.get("/api/analytics/market-analysis", async (req, res) => {
+    try {
+      const analysis = await openSourceAnalytics.analyzeMarketConditions();
+      res.json(analysis);
+    } catch (error) {
+      res.status(500).json({ error: `Failed to analyze market conditions: ${error}` });
+    }
+  });
+
+  app.post("/api/analytics/budget/optimize", async (req, res) => {
+    try {
+      const { totalBudget, constraints } = req.body;
+      const optimization = await openSourceAnalytics.optimizeBudgetAllocation(totalBudget, constraints);
+      res.json(optimization);
+    } catch (error) {
+      res.status(500).json({ error: `Budget optimization failed: ${error}` });
+    }
+  });
+
+  app.post("/api/analytics/experiments", async (req, res) => {
+    try {
+      const experiment = req.body;
+      const setup = await openSourceAnalytics.setupExperiment(experiment);
+      res.json(setup);
+    } catch (error) {
+      res.status(500).json({ error: `Experiment setup failed: ${error}` });
+    }
+  });
+
+  // Enhanced Video Generation Routes
+  app.post("/api/video/enhanced/generate", async (req, res) => {
+    try {
+      const request = req.body;
+      const result = await enhancedVideoGeneration.generateVideo(request);
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ error: `Enhanced video generation failed: ${error}` });
+    }
+  });
+
+  app.post("/api/video/enhanced/multi-engine", async (req, res) => {
+    try {
+      const request = req.body;
+      const results = await enhancedVideoGeneration.generateWithMultipleEngines(request);
+      res.json(results);
+    } catch (error) {
+      res.status(500).json({ error: `Multi-engine generation failed: ${error}` });
+    }
+  });
+
+  app.post("/api/video/enhanced/storyboard", async (req, res) => {
+    try {
+      const { script, platform, style } = req.body;
+      const storyboard = await enhancedVideoGeneration.createAdvancedStoryboard(script, platform, style);
+      res.json(storyboard);
+    } catch (error) {
+      res.status(500).json({ error: `Storyboard creation failed: ${error}` });
+    }
+  });
+
+  // Initialize MCP Server
+  mcpServer.start().then(() => {
+    console.log('MCP Server started successfully');
+  }).catch(error => {
+    console.error('Failed to start MCP Server:', error);
+  });
+
+  // Initialize enhanced n8n hosting
+  enhancedN8n.initializeN8nHosting().then(() => {
+    console.log('Enhanced n8n hosting initialized');
+  }).catch(error => {
+    console.error('Failed to initialize n8n hosting:', error);
   });
 
   const httpServer = createServer(app);
