@@ -77,7 +77,7 @@ export class AutomationOrchestrator {
       }
 
       if (process.env.GOOGLE_GEMINI_API_KEY) {
-        this.services.gemini = new GeminiService(process.env.GOOGLE_GEMINI_API_KEY);
+        this.services.gemini = new GeminiService();
       }
     } catch (error) {
       console.error('Failed to initialize automation services:', error);
