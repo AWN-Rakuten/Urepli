@@ -1,0 +1,53 @@
+# AI Product Reaction Campaign Template
+name: "新商品AI反応"
+content_type: "ai_product_reaction"
+platforms: ["tiktok", "instagram", "youtube"]
+template_key: "tech"
+
+# Campaign flow
+steps:
+  1. "最新ガジェット発見"
+  2. "AIがまず試す"
+  3. "人間の反応収録"
+  4. "比較結果発表"
+
+# Content structure
+script_template: |
+  フック: "えっ、これ見て！AIが先に使ってみたけど..."
+  
+  セクション1: AI使用映像
+  - ロボット風エフェクト
+  - データ解析風演出
+  - "処理中..."テキスト
+  
+  セクション2: 人間の実際使用
+  - 自然な反応
+  - 驚きの表情
+  - "これすごい！"
+  
+  セクション3: 比較結果
+  - AIスコア vs 人間評価
+  - 意外な発見ポイント
+  
+  CTA: "あなたはAI派？人間派？コメントで教えて！"
+
+# Visual elements
+effects:
+  - hologram_overlay
+  - data_visualization
+  - split_screen_comparison
+  - reaction_zoom
+
+# Hashtags
+hashtags:
+  - "#AI vs 人間"
+  - "#新商品レビュー"
+  - "#テクノロジー"
+  - "#ガジェット"
+  - "#未来"
+
+# Timing (Japanese peak hours)
+optimal_posting_times:
+  - "19:00 JST"
+  - "21:00 JST" 
+  - "23:00 JST"
