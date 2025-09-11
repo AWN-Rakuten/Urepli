@@ -58,7 +58,8 @@ class VideoGenerator:
         except Exception as e:
             print(f"Error generating TTS audio: {e}")
             # Create silent audio as fallback
-            silence = AudioFileClip(duration=script.get('estimated_duration', 30))
+            duration = script.get('estimated_duration', 30)
+            silence = AudioClip(lambda t: 0, duration=duration)
             silence.write_audiofile(audio_file)
             return audio_file
     
