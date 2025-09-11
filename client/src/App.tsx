@@ -15,8 +15,6 @@ import Documentation from "@/pages/documentation";
 import N8nTemplates from "@/pages/n8n-templates";
 import NotFound from "@/pages/not-found";
 import PredictiveSchedulingDashboard from "@/components/PredictiveSchedulingDashboard";
-import HyperAutomationDashboard from "@/components/HyperAutomationDashboard";
-
 function Router() {
   return (
     <Switch>
@@ -31,7 +29,6 @@ function Router() {
       <Route path="/documentation" component={Documentation} />
       <Route path="/n8n-templates" component={N8nTemplates} />
       <Route path="/predictive-scheduling" component={PredictiveSchedulingDashboard} />
-      <Route path="/hyper-automation" component={HyperAutomationDashboard} />
       <Route path="/settings" component={ConfigurationPage} />
       <Route component={NotFound} />
     </Switch>

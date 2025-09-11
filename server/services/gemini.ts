@@ -20,12 +20,12 @@ export class GeminiService {
 
   constructor() {
     const apiKey = process.env.GEMINI_API_KEY || "";
-    if (!this.ai) {
+    if (!apiKey) {
       console.warn("GEMINI_API_KEY not configured - using mock responses");
       this.ai = null;
     } else {
       try {
-        this.ai = new GoogleGenAI({ apiKey });
+        this.ai = new GoogleGenAI(apiKey);
       } catch (error) {
         console.warn("Failed to initialize Gemini AI - using mock responses");
         this.ai = null;

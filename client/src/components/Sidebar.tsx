@@ -12,6 +12,7 @@ const navItems = [
   { id: "accounts", path: "/accounts", icon: Users, label: "Accounts" },
   { id: "n8n-templates", path: "/n8n-templates", icon: Zap, label: "N8N Templates" },
   { id: "predictive-scheduling", path: "/predictive-scheduling", icon: Brain, label: "Predictive Scheduling" },
+  { id: "optimization", path: "/optimization", icon: Bot, label: "LLM Optimization" },
   { id: "documentation", path: "/documentation", icon: BookOpen, label: "Documentation" },
   { id: "settings", path: "/settings", icon: Settings, label: "Configuration" },
 ];
