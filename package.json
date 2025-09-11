@@ -159,7 +159,11 @@
     "ws": "^8.18.0",
     "xml2js": "^0.6.2",
     "zod": "^3.24.2",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "@remotion/bundler": "^4.0.0",
+    "@remotion/renderer": "^4.0.0",
+    "fluent-ffmpeg": "^2.1.2",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.3.0",
@@ -175,6 +179,8 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/ws": "^8.5.13",
+    "@types/fluent-ffmpeg": "^2.1.24",
+    "@types/node-fetch": "^2.6.11",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
     "drizzle-kit": "^0.30.4",
