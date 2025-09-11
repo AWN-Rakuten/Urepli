@@ -17,11 +17,41 @@ export interface AdCampaignConfig {
   };
 }
 
+export interface FacebookConfig {
+  accessToken: string;
+  appId?: string;
+  appSecret?: string;
+}
+
+export interface GoogleConfig {
+  apiKey: string;
+  clientId?: string;
+  clientSecret?: string;
+}
+
+export interface TikTokConfig {
+  accessToken: string;
+  advertiserId?: string;
+}
+
+export interface MultiPlatformAdManagerConfig {
+  adAccountId: string;
+  facebook?: FacebookConfig;
+  google?: GoogleConfig;
+  tiktok?: TikTokConfig;
+}
+
 export class MultiPlatformAdManager {
   private adAccountId: string;
+  private facebookConfig?: FacebookConfig;
+  private googleConfig?: GoogleConfig;
+  private tiktokConfig?: TikTokConfig;
 
-  constructor(adAccountId: string) {
-    this.adAccountId = adAccountId;
+  constructor(config: MultiPlatformAdManagerConfig) {
+    this.adAccountId = config.adAccountId;
+    this.facebookConfig = config.facebook;
+    this.googleConfig = config.google;
+    this.tiktokConfig = config.tiktok;
   }
 
   async createOptimizedCampaign(config: AdCampaignConfig): Promise<{
