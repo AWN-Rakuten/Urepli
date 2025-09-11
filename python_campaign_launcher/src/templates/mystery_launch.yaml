@@ -1,0 +1,55 @@
+# Mystery Product Launch Campaign Template
+name: "謎の新商品発表"
+content_type: "mystery_launch"
+platforms: ["tiktok", "instagram", "youtube"]
+template_key: "anime"
+
+# Campaign flow
+steps:
+  1. "謎の予告投稿"
+  2. "ヒント段階的公開"
+  3. "大発表カウントダウン" 
+  4. "完全公開"
+
+# Content structure
+script_template: |
+  フック: "実は...明日発表されるあれ、もう知ってるんです"
+  
+  セクション1: 謎めいた導入
+  - シルエット映像
+  - "内緒だけど..."
+  - 一部だけチラ見せ
+  
+  セクション2: ヒント公開
+  - "これがポイント1"
+  - "実はこんな機能も"
+  - "でも一番すごいのは..."
+  
+  セクション3: 大発表
+  - ドラマチックな公開
+  - 全貌を明かす
+  - 興奮の表現
+  
+  CTA: "続報が気になる人はフォロー必須！"
+
+# Visual elements
+effects:
+  - mysterious_shadows
+  - dramatic_reveal
+  - countdown_timer
+  - surprise_effect
+
+# Hashtags
+hashtags:
+  - "#謎の新商品"
+  - "#独占情報"
+  - "#発表前"
+  - "#アニメ"
+  - "#エンタメ"
+
+# Multi-part series
+series_structure:
+  part1: "予告編 - 謎の存在"
+  part2: "ヒント公開 - 少し見える"
+  part3: "カウントダウン - あと24時間"
+  part4: "大発表 - 全て明かす"
