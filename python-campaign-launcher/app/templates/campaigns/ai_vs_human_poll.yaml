@@ -1,0 +1,125 @@
+name: "AI vs 人間投票キャンペーン"
+description: "AIと人間の能力や判断を比較して、視聴者に投票を促すインタラクティブコンテンツ"
+campaign_type: "ai_vs_human_poll"
+
+video_content:
+  prompt: "左側にAIキャラクター、右側に人間が並んで、同じタスクを実行する。料理、アート、予測などの日本文化に関連した内容で競争する様子を明るく楽しく描写"
+  style: "anime"
+  duration: 18
+  aspect_ratio: "9:16"
+  background_music: "competitive_upbeat"
+  voice_over: "AIと人間、どっちが勝つと思う？コメントで投票してね！"
+  subtitles: true
+  japanese_optimized: true
+
+config:
+  target_platforms:
+    - "tiktok"
+    - "instagram"
+    - "youtube"
+  
+  posting_schedule:
+    initial_post: "19:30"
+    follow_up: "21:00"  # 結果発表
+    timezone: "Asia/Tokyo"
+  
+  auto_engage: true
+  engagement_replies:
+    - "どっちに投票した？🤔"
+    - "面白い結果になったね！"
+    - "AIの進歩ってすごい😲"
+    - "人間の創造性も負けてない！"
+    - "次回も楽しみ✨"
+  
+  content_variations: 4
+  japanese_locale: true
+  trending_hashtags: true
+  interactive_elements: true
+
+hashtags:
+  base:
+    - "#AI対人間"
+    - "#投票"
+    - "#比較"
+    - "#どっち派"
+    - "#AIチャレンジ"
+    - "#テクノロジー"
+    - "#面白実験"
+  
+  trending:
+    - "#あなたはどっち派"
+    - "#コメントで投票"
+    - "#結果が気になる"
+    - "#バトル"
+
+poll_scenarios:
+  cooking:
+    title: "料理対決"
+    ai_task: "AIが完璧なレシピで寿司を作る"
+    human_task: "職人が感覚で寿司を握る"
+    voting_criteria: "美味しそう度"
+  
+  art:
+    title: "アート対決"
+    ai_task: "AIが桜の絵を生成"
+    human_task: "画家が桜を手描き"
+    voting_criteria: "美しさ"
+  
+  prediction:
+    title: "予測対決"
+    ai_task: "AIが明日の天気を予測"
+    human_task: "天気予報士が経験で予測"
+    voting_criteria: "正確さ"
+  
+  language:
+    title: "言語対決"
+    ai_task: "AIが俳句を生成"
+    human_task: "詩人が俳句を作成"
+    voting_criteria: "感動度"
+
+interactive_features:
+  voting_mechanism:
+    - "comment_voting"
+    - "emoji_reactions"
+    - "poll_stickers"
+  
+  engagement_hooks:
+    - "結果は次の動画で！"
+    - "あなたの予想は当たる？"
+    - "コメント数で勝敗決定"
+
+analytics_targets:
+  views: 75000
+  engagement_rate: 15.0
+  comments: 2000  # High due to voting
+  poll_participation: 80  # % of viewers who vote
+  shares: 1500
+  viral_score: 80
+
+audience:
+  primary_age: "16-35"
+  gender: "all"
+  interests:
+    - "テクノロジー"
+    - "AI"
+    - "インタラクティブコンテンツ"
+    - "投票"
+    - "比較"
+  
+  engagement_patterns:
+    - "comment_heavy"
+    - "opinion_sharing"
+    - "debate_encouraging"
+
+cultural_elements:
+  japanese_themes:
+    - "職人技術"
+    - "伝統 vs 革新"
+    - "和の美学"
+    - "おもてなし精神"
+  
+  discussion_topics:
+    - "テクノロジーの進歩"
+    - "人間性の価値"
+    - "未来の社会"
+    - "共存の可能性"

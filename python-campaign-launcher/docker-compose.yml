@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+  # FastAPI Application
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - CAMPAIGN_DATABASE_URL=postgresql://postgres:password@db:5432/campaign_launcher
+      - CAMPAIGN_REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./videos:/app/videos
+      - ./logs:/app/logs
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Celery Worker
+  worker:
+    build: .
+    environment:
+      - CAMPAIGN_DATABASE_URL=postgresql://postgres:password@db:5432/campaign_launcher
+      - CAMPAIGN_REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./videos:/app/videos
+      - ./logs:/app/logs
+    command: celery -A celery_app worker --loglevel=info
+
+  # Celery Beat (Scheduler)
+  beat:
+    build: .
+    environment:
+      - CAMPAIGN_DATABASE_URL=postgresql://postgres:password@db:5432/campaign_launcher
+      - CAMPAIGN_REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./logs:/app/logs
+    command: celery -A celery_app beat --loglevel=info
+
+  # PostgreSQL Database
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=campaign_launcher
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # Redis for Celery
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # MinIO for S3-compatible storage
+  minio:
+    image: minio/minio
+    ports:
+      - "9000:9000"
+      - "9090:9090"
+    environment:
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9090"
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
