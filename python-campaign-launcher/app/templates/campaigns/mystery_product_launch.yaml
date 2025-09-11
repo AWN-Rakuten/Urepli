@@ -1,0 +1,108 @@
+name: "ミステリー商品発表キャンペーン"
+description: "神秘的な雰囲気で商品を段階的に公開し、話題性を最大化するキャンペーン"
+campaign_type: "mystery_product_launch"
+
+video_content:
+  prompt: "暗い背景に神秘的な光が差し込む中、シルエットで隠された商品が徐々に明らかになる。日本の美しい伝統的な要素とモダンなデザインが融合した演出"
+  style: "cinematic"
+  duration: 20
+  aspect_ratio: "9:16"
+  background_music: "mysterious_ambient"
+  voice_over: "これは何でしょう？日本の新しい革命が始まります..."
+  subtitles: true
+  japanese_optimized: true
+
+config:
+  target_platforms:
+    - "tiktok"
+    - "instagram"
+    - "youtube"
+  
+  posting_schedule:
+    phase_1: "18:00"  # ティーザー
+    phase_2: "20:00"  # 一部公開
+    phase_3: "22:00"  # 完全公開
+    timezone: "Asia/Tokyo"
+    multi_phase: true
+  
+  auto_engage: true
+  engagement_replies:
+    - "何これ、気になる！😳"
+    - "続きが知りたい..."
+    - "日本の技術力って本当にすごい"
+    - "これは絶対話題になる！"
+    - "ミステリアスで素敵✨"
+  
+  content_variations: 5
+  japanese_locale: true
+  trending_hashtags: true
+
+hashtags:
+  base:
+    - "#ミステリー"
+    - "#新発売"
+    - "#謎の商品"
+    - "#日本発"
+    - "#話題"
+    - "#革命的"
+    - "#ティーザー"
+  
+  trending:
+    - "#何これ"
+    - "#気になる"
+    - "#続きが見たい"
+    - "#バズる予感"
+
+campaign_phases:
+  phase_1:
+    name: "ティーザー"
+    duration: 24  # hours
+    reveal_percentage: 20
+    hashtags: ["#謎", "#ティーザー", "#何かが来る"]
+  
+  phase_2:
+    name: "一部公開"
+    duration: 48
+    reveal_percentage: 60
+    hashtags: ["#一部公開", "#気になる", "#もうすぐ"]
+  
+  phase_3:
+    name: "完全公開"
+    duration: 72
+    reveal_percentage: 100
+    hashtags: ["#大公開", "#ついに", "#これだった"]
+
+analytics_targets:
+  views: 100000
+  engagement_rate: 12.0
+  shares: 3000
+  comments: 1500
+  viral_score: 85
+  mystery_engagement: 90  # Custom metric for mystery campaigns
+
+audience:
+  primary_age: "20-40"
+  gender: "all"
+  interests:
+    - "テクノロジー"
+    - "新商品"
+    - "ミステリー"
+    - "日本文化"
+  
+  psychological_triggers:
+    - "curiosity"
+    - "fomo"  # Fear of missing out
+    - "exclusivity"
+    - "anticipation"
+
+optimization:
+  mystery_elements:
+    - "gradual_reveal"
+    - "countdown_timer"
+    - "clue_dropping"
+    - "audience_speculation"
+  
+  engagement_boosters:
+    - "guess_the_product"
+    - "share_for_hints"
+    - "early_access_tease"
