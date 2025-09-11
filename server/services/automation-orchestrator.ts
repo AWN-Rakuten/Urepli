@@ -51,36 +51,52 @@ export class AutomationOrchestrator {
   }
 
   private async initializeServices() {
-    try {
-      // Initialize services based on available environment variables
-      if (process.env.COMFYUI_URL) {
+    // Initialize services based on available environment variables
+    if (process.env.COMFYUI_URL) {
+      try {
         this.services.comfyUI = new ComfyUIService(process.env.COMFYUI_URL);
+      } catch (error) {
+        console.error('Failed to initialize ComfyUIService:', error);
       }
+    }
 
-      if (process.env.PYTHON_ENV_PATH) {
+    if (process.env.PYTHON_ENV_PATH) {
+      try {
         this.services.botasaurus = new BotasaurusService(process.env.PYTHON_ENV_PATH);
+      } catch (error) {
+        console.error('Failed to initialize BotasaurusService:', error);
       }
+    }
 
-      if (process.env.A8NET_API_KEY && process.env.A8NET_SECRET_KEY && process.env.A8NET_AFFILIATE_ID) {
+    if (process.env.A8NET_API_KEY && process.env.A8NET_SECRET_KEY && process.env.A8NET_AFFILIATE_ID) {
+      try {
         this.services.a8net = new A8NetService(
           process.env.A8NET_API_KEY,
           process.env.A8NET_SECRET_KEY,
           process.env.A8NET_AFFILIATE_ID
         );
+      } catch (error) {
+        console.error('Failed to initialize A8NetService:', error);
       }
+    }
 
-      if (process.env.RAKUTEN_APPLICATION_ID && process.env.RAKUTEN_AFFILIATE_ID) {
+    if (process.env.RAKUTEN_APPLICATION_ID && process.env.RAKUTEN_AFFILIATE_ID) {
+      try {
         this.services.rakuten = new RakutenAffiliateService(
           process.env.RAKUTEN_APPLICATION_ID,
           process.env.RAKUTEN_AFFILIATE_ID
         );
+      } catch (error) {
+        console.error('Failed to initialize RakutenAffiliateService:', error);
       }
+    }
 
-      if (process.env.GOOGLE_GEMINI_API_KEY) {
+    if (process.env.GOOGLE_GEMINI_API_KEY) {
+      try {
         this.services.gemini = new GeminiService();
+      } catch (error) {
+        console.error('Failed to initialize GeminiService:', error);
       }
-    } catch (error) {
-      console.error('Failed to initialize automation services:', error);
     }
   }
 
