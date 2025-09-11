@@ -1,5 +1,4 @@
 import axios from 'axios';
-import WebSocket from 'ws';
 
 export interface ComfyUIWorkflow {
   id: string;
