@@ -225,7 +225,7 @@ class VideoGenerator:
         """Create a solid colored background"""
         return ColorClip(size=(1080, 1920), color=color, duration=duration)
     
-    async def _create_simple_video(self, script: Dict[str, Any], audio_file: str) -> str:
+    def _create_simple_video(self, script: Dict[str, Any], audio_file: str) -> str:
         """Create a simple video with text and audio as fallback"""
         
         video_file = os.path.join(self.temp_dir, f"simple_{script.get('id', 'temp')}.mp4")
