@@ -329,5 +329,5 @@ class VideoGenerator:
         try:
             import shutil
             shutil.rmtree(self.temp_dir)
-        except:
+        except Exception:
             pass
