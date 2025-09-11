@@ -85,23 +85,44 @@ export default function HyperAutomationDashboard() {
     budgetPerPlatform: 10000,
     targetROAS: 3.0
   });
+  // Polling interval state for exponential backoff
+  const DEFAULT_POLL_INTERVAL = 10000;
+  const MAX_POLL_INTERVAL = 120000; // 2 minutes
+  const [pollInterval, setPollInterval] = useState(DEFAULT_POLL_INTERVAL);
 
   useEffect(() => {
     loadTemplates();
     loadCapabilities();
     loadAnalytics();
     loadActiveTasks();
-    
-    // Poll for task updates every 10 seconds
-    const interval = setInterval(() => {
+  }, []);
+
+  useEffect(() => {
+    // Adjust polling interval based on currentTask status
+    let intervalId: NodeJS.Timeout;
+    function poll() {
       loadActiveTasks();
       if (currentTask) {
         checkTaskStatus(currentTask.id);
       }
-    }, 10000);
+    }
+    poll(); // Initial poll
+    intervalId = setInterval(poll, pollInterval);
+    return () => clearInterval(intervalId);
+  }, [currentTask?.id, pollInterval]);
 
-    return () => clearInterval(interval);
-  }, [currentTask?.id]);
+  useEffect(() => {
+    // Exponential backoff for completed/failed tasks
+    if (!currentTask) {
+      setPollInterval(DEFAULT_POLL_INTERVAL);
+      return;
+    }
+    if (currentTask.status === 'completed' || currentTask.status === 'failed') {
+      setPollInterval(prev => Math.min(prev * 2, MAX_POLL_INTERVAL));
+    } else {
+      setPollInterval(DEFAULT_POLL_INTERVAL);
+    }
+  }, [currentTask?.status]);
 
   const loadTemplates = async () => {
     try {
