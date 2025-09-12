@@ -26,7 +26,7 @@ import { registerSocialAccountRoutes } from "./routes/social-accounts";
 import { MultiAccountPoster } from "./services/multi-account-poster";
 import googleCloudRoutes from "./routes/google-cloud-routes";
 import n8nJapaneseRoutes from "./routes/n8n-japanese-routes";
-import affiliateRoutes from "./routes/affiliate-routes";
+import affiliateRoutes from "./routes/affiliate";
 import socialMediaRoutes from "./routes/social-media-routes";
 import oauthRoutes from "./routes/oauth-routes";
 import predictiveRoutes from "./routes/predictive-routes";
