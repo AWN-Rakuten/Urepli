@@ -1,0 +1,491 @@
+{
+  "name": "Japanese Affiliate Marketing Flywheel",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-daily-trends",
+      "name": "Daily Trend Discovery",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "url": "http://localhost:3000/api/trends/top",
+        "options": {}
+      },
+      "id": "http-trends",
+      "name": "Get Top Trends",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "http://localhost:3000/api/affiliate/search",
+        "options": {
+          "body": {
+            "bodyFields": {
+              "fields": [
+                {
+                  "name": "keyword",
+                  "value": "={{ $json.trend_keyword }}"
+                },
+                {
+                  "name": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "headers": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "http-search-offers",
+      "name": "Search Best Offers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "http://localhost:3000/api/content/generate",
+        "options": {
+          "body": {
+            "bodyFields": {
+              "fields": [
+                {
+                  "name": "keyword",
+                  "value": "={{ $json.trend_keyword }}"
+                },
+                {
+                  "name": "offers",
+                  "value": "={{ JSON.stringify($json.data) }}"
+                },
+                {
+                  "name": "type",
+                  "value": "affiliate_post"
+                }
+              ]
+            }
+          },
+          "headers": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "http-generate-content",
+      "name": "Generate AI Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "http://localhost:3000/api/compliance/inject",
+        "options": {
+          "body": {
+            "bodyFields": {
+              "fields": [
+                {
+                  "name": "content",
+                  "value": "={{ $json.generated_content }}"
+                },
+                {
+                  "name": "networks",
+                  "value": "[\"rakuten\", \"amazon\"]"
+                },
+                {
+                  "name": "platform",
+                  "value": "instagram"
+                },
+                {
+                  "name": "include_amazon_associates",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "id": "http-compliance",
+      "name": "Add Compliance Disclosure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "http://localhost:3000/api/social-media/post",
+        "options": {
+          "body": {
+            "bodyFields": {
+              "fields": [
+                {
+                  "name": "content",
+                  "value": "={{ $json.data.updated_content }}"
+                },
+                {
+                  "name": "platform",
+                  "value": "instagram"
+                },
+                {
+                  "name": "schedule_time",
+                  "value": "immediate"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "id": "http-post-social",
+      "name": "Post to Social Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 4,9,19 5,10,15,20,25,30 * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-event-boost",
+      "name": "Event Day Boost",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "url": "http://localhost:3000/api/affiliate/events/active",
+        "options": {}
+      },
+      "id": "http-check-events",
+      "name": "Check Active Events",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        400,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.data.events.length }}",
+              "rightValue": 0,
+              "operator": {
+                "operation": "largerEqual",
+                "type": "number"
+              }
+            }
+          ],
+          "combineOperation": "any"
+        }
+      },
+      "id": "if-events-active",
+      "name": "Events Active?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        600,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "http://localhost:3000/api/line/broadcast-deal",
+        "options": {
+          "body": {
+            "bodyFields": {
+              "fields": [
+                {
+                  "name": "deal_type",
+                  "value": "event_special"
+                },
+                {
+                  "name": "badge_text",
+                  "value": "={{ $json.data.boost_settings.badge_text }}"
+                },
+                {
+                  "name": "urgency_level",
+                  "value": "{{ $json.data.boost_settings.urgency_level }}"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "id": "http-line-broadcast",
+      "name": "LINE Event Broadcast",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        800,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 2 * * *"
+            }
+          ]
+        }
+      },
+      "id": "cron-nightly-learning",
+      "name": "Nightly Learning",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        200,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "http://localhost:3000/api/affiliate/update-cvr",
+        "options": {
+          "body": {
+            "bodyFields": {
+              "fields": [
+                {
+                  "name": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "id": "http-update-cvr",
+      "name": "Update CVR Proxies",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        400,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "url": "http://localhost:3000/api/bandit/retrain",
+        "options": {
+          "body": {
+            "bodyFields": {
+              "fields": [
+                {
+                  "name": "days",
+                  "value": "30"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "id": "http-retrain-bandit",
+      "name": "Retrain Bandit Models",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        600,
+        900
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Trend Discovery": {
+      "main": [
+        [
+          {
+            "node": "Get Top Trends",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Top Trends": {
+      "main": [
+        [
+          {
+            "node": "Search Best Offers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Best Offers": {
+      "main": [
+        [
+          {
+            "node": "Generate AI Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate AI Content": {
+      "main": [
+        [
+          {
+            "node": "Add Compliance Disclosure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Compliance Disclosure": {
+      "main": [
+        [
+          {
+            "node": "Post to Social Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Event Day Boost": {
+      "main": [
+        [
+          {
+            "node": "Check Active Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Active Events": {
+      "main": [
+        [
+          {
+            "node": "Events Active?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Events Active?": {
+      "main": [
+        [
+          {
+            "node": "LINE Event Broadcast",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nightly Learning": {
+      "main": [
+        [
+          {
+            "node": "Update CVR Proxies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update CVR Proxies": {
+      "main": [
+        [
+          {
+            "node": "Retrain Bandit Models",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2024-03-20T10:00:00.000Z",
+  "updatedAt": "2024-03-20T10:00:00.000Z",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-03-20T10:00:00.000Z",
+      "updatedAt": "2024-03-20T10:00:00.000Z",
+      "id": "affiliate-optimization",
+      "name": "Affiliate Optimization"
+    }
+  ],
+  "triggerCount": 0,
+  "versionId": "1"
+}

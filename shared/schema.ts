@@ -322,3 +322,79 @@ export type GeminiSeed = typeof geminiSeeds.$inferSelect;
 export type InsertGeminiSeed = typeof geminiSeeds.$inferInsert;
 export type OAuthState = typeof oauthStates.$inferSelect;
 export type InsertOAuthState = typeof oauthStates.$inferInsert;
+
+// Japanese Affiliate Network Tables
+export const affiliateNetworks = pgTable("affiliate_networks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // 'rakuten', 'yahoo', 'valuecommerce', 'amazon', 'a8net'
+  api_keys: jsonb("api_keys"), // Store API credentials
+  enabled: boolean("enabled").default(true),
+  cvr_proxy: real("cvr_proxy").default(0.03), // Default conversion rate proxy
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const offers = pgTable("offers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  network_id: varchar("network_id").references(() => affiliateNetworks.id).notNull(),
+  external_id: text("external_id").notNull(), // Network's product ID
+  title: text("title").notNull(),
+  price_jpy: integer("price_jpy").notNull(),
+  commission_bps: integer("commission_bps"), // Commission in basis points
+  affiliate_url: text("affiliate_url").notNull(),
+  product_url: text("product_url").notNull(),
+  image_url: text("image_url"),
+  shop_name: text("shop_name"),
+  category: text("category"),
+  rating: real("rating"),
+  review_count: integer("review_count"),
+  source_payload: jsonb("source_payload"), // Raw API response
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
+export const linkVariants = pgTable("link_variants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  post_id: varchar("post_id").notNull(), // Links to content table
+  offer_id: varchar("offer_id").references(() => offers.id).notNull(),
+  variant_key: text("variant_key").notNull(), // Unique key for this variant
+  caption: text("caption"),
+  thumb_url: text("thumb_url"),
+  enabled: boolean("enabled").default(true),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+export const variantMetricsDaily = pgTable("variant_metrics_daily", {
+  variant_id: varchar("variant_id").references(() => linkVariants.id).notNull(),
+  date: timestamp("date").notNull(),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  conversions: integer("conversions").default(0),
+  revenue_jpy: real("revenue_jpy").default(0),
+}, (table) => ({
+  pk: {
+    primaryKey: [table.variant_id, table.date]
+  }
+}));
+
+export const eventsCalendar = pgTable("events_calendar", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull(), // 'SPU', '5-0-day', 'SUPER_SALE', 'OKAIMONO'
+  start_ts: timestamp("start_ts").notNull(),
+  end_ts: timestamp("end_ts").notNull(),
+  metadata: jsonb("metadata"), // Points multiplier, campaign details, etc.
+  is_active: boolean("is_active").default(false),
+  created_at: timestamp("created_at").defaultNow(),
+});
+
+// Type exports for new tables
+export type AffiliateNetwork = typeof affiliateNetworks.$inferSelect;
+export type InsertAffiliateNetwork = typeof affiliateNetworks.$inferInsert;
+export type Offer = typeof offers.$inferSelect;
+export type InsertOffer = typeof offers.$inferInsert;
+export type LinkVariant = typeof linkVariants.$inferSelect;
+export type InsertLinkVariant = typeof linkVariants.$inferInsert;
+export type VariantMetricsDaily = typeof variantMetricsDaily.$inferSelect;
+export type InsertVariantMetricsDaily = typeof variantMetricsDaily.$inferInsert;
+export type EventsCalendar = typeof eventsCalendar.$inferSelect;
+export type InsertEventsCalendar = typeof eventsCalendar.$inferInsert;
