@@ -15,6 +15,8 @@ import Documentation from "@/pages/documentation";
 import N8nTemplates from "@/pages/n8n-templates";
 import NotFound from "@/pages/not-found";
 import PredictiveSchedulingDashboard from "@/components/PredictiveSchedulingDashboard";
+import ReferralOnboardingGuide from "@/components/onboarding/ReferralOnboardingGuide";
+import ReferralPerformanceDashboard from "@/components/dashboard/ReferralPerformanceDashboard";
 function Router() {
   return (
     <Switch>
@@ -29,6 +31,8 @@ function Router() {
       <Route path="/documentation" component={Documentation} />
       <Route path="/n8n-templates" component={N8nTemplates} />
       <Route path="/predictive-scheduling" component={PredictiveSchedulingDashboard} />
+      <Route path="/onboarding" component={ReferralOnboardingGuide} />
+      <Route path="/referral-dashboard" component={ReferralPerformanceDashboard} />
       <Route path="/settings" component={ConfigurationPage} />
       <Route component={NotFound} />
     </Switch>

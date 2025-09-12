@@ -1118,7 +1118,7 @@ export class PredictiveWorkflowScheduler {
     }
   }
 
-  private getDefaultMarketPatterns(platform: string): MarketPattern[] {
+  private getDefaultMarketPatternsV2(platform: string): MarketPattern[] {
     // Fallback patterns based on Japanese market research
     const patterns: MarketPattern[] = [
       {
@@ -1226,9 +1226,9 @@ export class PredictiveWorkflowScheduler {
   }
 
   /**
-   * Get current predictive schedules
+   * Get current predictive schedules (v2)
    */
-  async getCurrentPredictiveSchedules(): Promise<PredictiveSchedule[]> {
+  async getCurrentPredictiveSchedulesV2(): Promise<PredictiveSchedule[]> {
     try {
       // Query Firestore for current schedules
       const schedulesRef = this.firestore.collection('predictive_schedules');
