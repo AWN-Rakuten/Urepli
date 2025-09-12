@@ -14,11 +14,16 @@ if (!process.env.DATABASE_URL) {
 }
 
 // Use SQLite for development/demo, Neon for production
+let db: any;
+let pool: any;
+
 if (process.env.DATABASE_URL.startsWith('file:')) {
   const sqlite = new Database(process.env.DATABASE_URL.replace('file:', ''));
-  export const db = drizzleBetter(sqlite, { schema });
-  export { sqlite as pool };
+  db = drizzleBetter(sqlite, { schema });
+  pool = sqlite;
 } else {
-  export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  export const db = drizzleNeon({ client: pool, schema });
+  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  db = drizzleNeon({ client: pool, schema });
 }
+
+export { db, pool };

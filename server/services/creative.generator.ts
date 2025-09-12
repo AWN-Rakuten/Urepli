@@ -5,7 +5,7 @@
 
 import { tiktokTrendsService, TikTokTrend } from './trends.tiktok';
 import { Offer } from '../../shared/schema';
-import { GoogleGenAI } from '@google/genai';
+import { createGeminiClient } from './mock-gemini';
 
 export interface CreativeInput {
   trend: TikTokTrend;
