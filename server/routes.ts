@@ -43,6 +43,7 @@ import researchRoutes from "./routes/research";
 import blogRoutes from "./routes/blog";
 import videoRoutes from "./routes/video";
 import webfactoryRoutes from "./routes/webfactory";
+import optimizationFactoryRoutes from "./routes/optimization";
 
 // Enhanced services
 import { MCPServer } from "./services/mcp-server";
@@ -167,6 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/blog', blogRoutes);
   app.use('/api/video', videoRoutes);
   app.use('/api/webfactory', webfactoryRoutes);
+  app.use('/api/optimization', optimizationFactoryRoutes);
   console.log('Video + Blog Factory routes registered successfully');
   
   // Initialize multi-account posting service
