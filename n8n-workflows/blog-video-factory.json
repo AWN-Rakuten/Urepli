@@ -1,0 +1,457 @@
+{
+  "name": "Blog + Video Factory - 完全自動化",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 5 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily Trigger - 05:00 JST",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "research/brief",
+        "options": {}
+      },
+      "name": "Research Topic",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/research/brief",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"seed\": \"{{ $json.niche || '美容' }}\",\n  \"locale\": \"ja-JP\",\n  \"contentType\": \"both\"\n}"
+      },
+      "name": "Generate Research Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/blog/generate",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"outline\": {{ $json.data.outline }},\n  \"keywords\": {{ $json.data.keywords }},\n  \"wordCount\": 2000,\n  \"tone\": \"professional\",\n  \"includeAffiliate\": true\n}"
+      },
+      "name": "Generate Blog Post",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/video/generate",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"script\": {\n    \"text\": \"{{ $json.data.contentAngles[0].hook }} {{ $json.data.contentAngles[0].keyPoints.join('。') }}。{{ $json.data.contentAngles[0].cta }}\",\n    \"duration\": 30\n  },\n  \"voice\": \"jp_female_a\",\n  \"length\": 30,\n  \"style\": \"commercial\",\n  \"includeCaptions\": true\n}"
+      },
+      "name": "Generate Video",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        900,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/optimization/compliance/check",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"title\": \"{{ $('Generate Blog Post').first().json.data.title }}\",\n  \"body\": \"{{ $('Generate Blog Post').first().json.data.html }}\",\n  \"hasAffiliateLinks\": true,\n  \"platform\": \"blog\"\n}"
+      },
+      "name": "Compliance Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.data.passed }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Compliance Passed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/blog/publish",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"title\": \"{{ $('Generate Blog Post').first().json.data.title }}\",\n  \"content\": \"{{ $('Generate Blog Post').first().json.data.html }}\",\n  \"excerpt\": \"{{ $('Generate Blog Post').first().json.data.metaDescription }}\",\n  \"tags\": {{ $('Generate Research Brief').first().json.data.keywords[0].related }},\n  \"images\": {{ $('Generate Blog Post').first().json.data.images }},\n  \"slug\": \"{{ $('Generate Blog Post').first().json.data.slug }}\",\n  \"status\": \"publish\",\n  \"targets\": [\"wordpress\"]\n}"
+      },
+      "name": "Publish Blog",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/social-media/post",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"platform\": \"tiktok\",\n  \"content\": {\n    \"caption\": \"{{ $('Generate Research Brief').first().json.data.contentAngles[0].hook }} #{{ $('Generate Research Brief').first().json.data.outline.mainTopic }} #PR\",\n    \"videoPath\": \"{{ $('Generate Video').first().json.data.videoPath }}\"\n  }\n}"
+      },
+      "name": "Post to TikTok",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/optimization/compliance/auto-fix",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"content\": \"{{ $('Generate Blog Post').first().json.data.html }}\",\n  \"metadata\": {\n    \"hasAffiliateLinks\": true\n  }\n}"
+      },
+      "name": "Auto-Fix Compliance",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1560,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/seo/internal-links/execute/{{ $json.siteId }}",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      "name": "Update Internal Links",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        1780,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/seo/sitemap/generate/{{ $json.siteId }}",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        }
+      },
+      "name": "Update Sitemap",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2000,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "requestMethod": "POST",
+        "url": "http://localhost:3000/api/optimization/record-performance",
+        "options": {
+          "headers": {
+            "Content-Type": "application/json"
+          }
+        },
+        "bodyParametersJson": "{\n  \"contentId\": \"{{ $('Publish Blog').first().json.data.wordpress.id }}\",\n  \"metrics\": {\n    \"url\": \"{{ $('Publish Blog').first().json.data.wordpress.url }}\",\n    \"impressions\": 0,\n    \"clicks\": 0,\n    \"ctr\": 0,\n    \"avgPosition\": 50,\n    \"dwellTime\": 0,\n    \"bounceRate\": 0,\n    \"conversions\": 0,\n    \"revenue\": 0,\n    \"date\": \"{{ new Date().toISOString() }}\"\n  }\n}"
+      },
+      "name": "Initialize Performance Tracking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        2220,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "✅ Blog + Video Factory: 自動生成完了",
+        "message": "新しいコンテンツが自動生成され、公開されました。\\n\\nブログ記事：{{ $('Publish Blog').first().json.data.wordpress.url }}\\n動画：TikTokに投稿済み\\n\\nSEO最適化：完了\\nコンプライアンス：適合",
+        "options": {}
+      },
+      "name": "Success Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "subject": "⚠️ Blog + Video Factory: コンプライアンス要確認",
+        "message": "生成されたコンテンツにコンプライアンス問題があります。\\n\\n問題：{{ $('Compliance Check').first().json.data.requiredFixes }}\\n\\n自動修正を試行しましたが、手動確認が必要です。",
+        "options": {}
+      },
+      "name": "Compliance Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        2440,
+        280
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 5,
+        "unit": "minutes"
+      },
+      "name": "Wait for Processing",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Trigger - 05:00 JST": {
+      "main": [
+        [
+          {
+            "node": "Research Topic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Topic": {
+      "main": [
+        [
+          {
+            "node": "Generate Research Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Research Brief": {
+      "main": [
+        [
+          {
+            "node": "Generate Blog Post",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Blog Post": {
+      "main": [
+        [
+          {
+            "node": "Compliance Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Video": {
+      "main": [
+        [
+          {
+            "node": "Wait for Processing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compliance Check": {
+      "main": [
+        [
+          {
+            "node": "Compliance Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compliance Passed?": {
+      "main": [
+        [
+          {
+            "node": "Publish Blog",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Auto-Fix Compliance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Blog": {
+      "main": [
+        [
+          {
+            "node": "Update Internal Links",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Processing": {
+      "main": [
+        [
+          {
+            "node": "Post to TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-Fix Compliance": {
+      "main": [
+        [
+          {
+            "node": "Compliance Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Internal Links": {
+      "main": [
+        [
+          {
+            "node": "Update Sitemap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Sitemap": {
+      "main": [
+        [
+          {
+            "node": "Initialize Performance Tracking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Initialize Performance Tracking": {
+      "main": [
+        [
+          {
+            "node": "Success Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["automation", "blog", "video", "japanese", "compliance", "seo"],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "description": "完全自動化されたブログ記事と動画生成ワークフロー。日次実行で研究→生成→コンプライアンスチェック→公開→SEO最適化まで全自動。",
+    "categories": ["Content Creation", "Marketing", "Japanese Market"],
+    "author": "Urepli Factory"
+  }
+}
