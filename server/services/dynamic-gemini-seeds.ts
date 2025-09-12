@@ -511,7 +511,7 @@ Provide the new seed in JSON format with these fields:
 
     try {
       // Combine seed with user prompt
-      const fullPrompt = `${bestSeed.seedValue}\n\nUSER REQUEST: ${prompt}`;
+      let fullPrompt = `${bestSeed.seedValue}\n\nUSER REQUEST: ${prompt}`;
       
       if (context) {
         fullPrompt += `\n\nCONTEXT: ${JSON.stringify(context, null, 2)}`;

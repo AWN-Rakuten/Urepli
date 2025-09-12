@@ -201,12 +201,13 @@ export class MemStorage implements IStorage {
     }
   }
 
-  // Update content
-  async updateContent(contentId: string, updates: any): Promise<void> {
+  // Update content by ID (deprecated - use updateContent below)
+  async updateContentById(contentId: string, updates: any): Promise<void> {
     try {
-      const content = this.content[contentId];
+      const content = this.content.get(contentId);
       if (content) {
         Object.assign(content, updates);
+        this.content.set(contentId, content);
       }
     } catch (error) {
       console.error('Error updating content:', error);

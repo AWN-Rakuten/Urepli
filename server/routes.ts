@@ -34,6 +34,8 @@ import contentPostingRoutes from "./routes/content-posting-routes";
 
 import optimizationRoutes from "./routes/optimization-routes";
 import enhancedAIRoutes from "./routes/enhanced-ai-routes";
+import automationRoutes from "./routes/automation-routes";
+import referralApiRoutes from "./routes/referral-api";
 import { realisticDataGenerator } from "./services/realistic-data-generator";
 
 // Enhanced services
@@ -147,6 +149,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('Registering Enhanced AI routes at /api/enhanced-ai');
   app.use('/api/enhanced-ai', enhancedAIRoutes);
   console.log('Enhanced AI routes registered successfully');
+  
+  // Register Ultimate Referral Generation System routes
+  console.log('Registering Ultimate Referral System routes at /api/referral');
+  app.use('/api/referral', referralApiRoutes);
+  console.log('Ultimate Referral System routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
