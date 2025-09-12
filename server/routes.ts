@@ -33,7 +33,7 @@ import predictiveRoutes from "./routes/predictive-routes";
 import contentPostingRoutes from "./routes/content-posting-routes";
 
 import optimizationRoutes from "./routes/optimization-routes";
-main
+import enhancedAIRoutes from "./routes/enhanced-ai-routes";
 import { realisticDataGenerator } from "./services/realistic-data-generator";
 
 // Enhanced services
@@ -142,6 +142,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('Registering AI Optimization routes at /api/optimization');
   app.use('/api/optimization', optimizationRoutes);
   console.log('AI Optimization routes registered successfully');
+  
+  // Register Enhanced AI Integration routes
+  console.log('Registering Enhanced AI routes at /api/enhanced-ai');
+  app.use('/api/enhanced-ai', enhancedAIRoutes);
+  console.log('Enhanced AI routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);

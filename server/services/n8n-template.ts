@@ -1,6 +1,17 @@
 import { GeminiService } from "./gemini";
 import { BanditAlgorithmService } from "./bandit";
+import { ComfyUIService, AICharacterConfig } from "./comfyui-integration";
 import type { N8nTemplate, OptimizationEvent, BanditArm } from "@shared/schema";
+import axios from 'axios';
+import { execSync } from 'child_process';
+
+export interface GitIntegrationConfig {
+  repositoryUrl: string;
+  branch: string;
+  accessToken?: string;
+  autoSync: boolean;
+  syncInterval: number; // minutes
+}
 
 export interface N8nOptimizationRequest {
   templateId: string;
@@ -26,10 +37,306 @@ export interface N8nOptimizationResult {
 export class N8nTemplateService {
   private geminiService: GeminiService;
   private banditService: BanditAlgorithmService;
+  private comfyUIService: ComfyUIService;
+  private gitConfig?: GitIntegrationConfig;
+  private templateRepository: string = './data/n8n-git-templates';
 
-  constructor() {
+  constructor(gitConfig?: GitIntegrationConfig) {
     this.geminiService = new GeminiService();
     this.banditService = new BanditAlgorithmService();
+    this.comfyUIService = new ComfyUIService();
+    this.gitConfig = gitConfig;
+    
+    if (gitConfig?.autoSync) {
+      this.startAutoSync();
+    }
+  }
+
+  /**
+   * Initialize Git repository for template management
+   */
+  async initializeGitRepository(): Promise<void> {
+    if (!this.gitConfig) {
+      throw new Error('Git configuration not provided');
+    }
+
+    try {
+      // Clone or initialize repository
+      execSync(`mkdir -p ${this.templateRepository}`);
+      
+      try {
+        execSync(`git clone ${this.gitConfig.repositoryUrl} ${this.templateRepository}`, 
+                { stdio: 'pipe' });
+      } catch {
+        // Repository might already exist, try to pull latest
+        execSync(`cd ${this.templateRepository} && git pull origin ${this.gitConfig.branch}`, 
+                { stdio: 'pipe' });
+      }
+      
+      console.log('Git repository initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Git repository:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync templates with Git repository
+   */
+  async syncWithGitRepository(): Promise<{
+    pulled: string[];
+    pushed: string[];
+    conflicts: string[];
+  }> {
+    if (!this.gitConfig) {
+      throw new Error('Git configuration not provided');
+    }
+
+    const result = { pulled: [], pushed: [], conflicts: [] };
+
+    try {
+      // Pull latest changes
+      const pullResult = execSync(
+        `cd ${this.templateRepository} && git pull origin ${this.gitConfig.branch}`, 
+        { encoding: 'utf-8' }
+      );
+      
+      if (pullResult.includes('CONFLICT')) {
+        result.conflicts.push('Merge conflicts detected');
+      } else {
+        result.pulled.push('Successfully pulled latest templates');
+      }
+
+      // Commit and push local changes if any
+      try {
+        execSync(`cd ${this.templateRepository} && git add .`, { stdio: 'pipe' });
+        execSync(
+          `cd ${this.templateRepository} && git commit -m "Auto-sync: Update templates ${new Date().toISOString()}"`, 
+          { stdio: 'pipe' }
+        );
+        execSync(
+          `cd ${this.templateRepository} && git push origin ${this.gitConfig.branch}`, 
+          { stdio: 'pipe' }
+        );
+        result.pushed.push('Successfully pushed local changes');
+      } catch {
+        // No changes to commit
+      }
+
+      return result;
+    } catch (error) {
+      console.error('Git sync failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create AI-powered character generation workflow with LLM integration
+   */
+  async createAICharacterWorkflow(
+    characterConfig: AICharacterConfig,
+    scriptPrompt: string,
+    platform: 'tiktok' | 'instagram' | 'youtube' = 'tiktok'
+  ): Promise<N8nTemplate> {
+    const workflowId = `ai-character-workflow-${Date.now()}`;
+    
+    const template: Omit<N8nTemplate, 'id' | 'createdAt' | 'updatedAt'> = {
+      name: `AI Character Generation - ${characterConfig.style} ${characterConfig.ethnicity}`,
+      description: `Advanced AI character workflow with LLM script generation for ${platform}`,
+      template: {
+        id: workflowId,
+        name: `AI Character Pipeline v2.0`,
+        nodes: [
+          {
+            id: "trigger",
+            name: "Content Trigger",
+            type: "n8n-nodes-base.cron",
+            position: [0, 0],
+            parameters: {
+              rule: "0 */2 * * *", // Every 2 hours
+              timezone: "Asia/Tokyo"
+            }
+          },
+          {
+            id: "generate_script",
+            name: "Generate Character Script with Gemini",
+            type: "n8n-nodes-base.httpRequest",
+            position: [200, 0],
+            parameters: {
+              url: "/api/ai/generate-character-script",
+              method: "POST",
+              sendBody: true,
+              bodyParameters: {
+                prompt: scriptPrompt,
+                character: characterConfig,
+                platform: platform,
+                duration: 30,
+                language: "japanese"
+              }
+            }
+          },
+          {
+            id: "enhance_script",
+            name: "Enhance Script with Context",
+            type: "n8n-nodes-base.httpRequest", 
+            position: [400, 0],
+            parameters: {
+              url: "/api/ai/enhance-script",
+              method: "POST",
+              sendBody: true,
+              bodyParameters: {
+                script: "={{$node['Generate Character Script with Gemini'].json['script']}}",
+                character: characterConfig,
+                emotions: characterConfig.emotions,
+                voice: characterConfig.voice
+              }
+            }
+          },
+          {
+            id: "generate_character",
+            name: "Generate AI Character Video",
+            type: "n8n-nodes-base.httpRequest",
+            position: [600, 0], 
+            parameters: {
+              url: "/api/comfyui/generate-character",
+              method: "POST",
+              sendBody: true,
+              bodyParameters: {
+                characterConfig: characterConfig,
+                script: "={{$node['Enhance Script with Context'].json['enhancedScript']}}",
+                workflow: "hyperrealistic_character"
+              }
+            }
+          },
+          {
+            id: "add_voice_synthesis",
+            name: "Generate Voice with TTS",
+            type: "n8n-nodes-base.httpRequest",
+            position: [800, 0],
+            parameters: {
+              url: "/api/tts/generate-voice", 
+              method: "POST",
+              sendBody: true,
+              bodyParameters: {
+                text: "={{$node['Enhance Script with Context'].json['enhancedScript']}}",
+                voice: characterConfig.voice,
+                speed: 1.0,
+                emotion: characterConfig.emotions[0] || 'neutral'
+              }
+            }
+          },
+          {
+            id: "lip_sync_video",
+            name: "Synchronize Lip Movement",
+            type: "n8n-nodes-base.httpRequest",
+            position: [1000, 0],
+            parameters: {
+              url: "/api/comfyui/lip-sync",
+              method: "POST", 
+              sendBody: true,
+              bodyParameters: {
+                videoUrl: "={{$node['Generate AI Character Video'].json['videoUrl']}}",
+                audioUrl: "={{$node['Generate Voice with TTS'].json['audioUrl']}}",
+                model: "Wav2Lip_GAN_HD"
+              }
+            }
+          },
+          {
+            id: "optimize_for_platform",
+            name: "Optimize for Platform",
+            type: "n8n-nodes-base.httpRequest",
+            position: [1200, 0],
+            parameters: {
+              url: "/api/video/optimize-platform",
+              method: "POST",
+              sendBody: true,
+              bodyParameters: {
+                videoUrl: "={{$node['Synchronize Lip Movement'].json['syncedVideoUrl']}}",
+                platform: platform,
+                aspectRatio: platform === 'tiktok' ? '9:16' : '16:9',
+                duration: 30,
+                quality: 'high'
+              }
+            }
+          },
+          {
+            id: "add_captions",
+            name: "Generate Auto Captions",
+            type: "n8n-nodes-base.httpRequest",
+            position: [1400, 0],
+            parameters: {
+              url: "/api/video/auto-captions",
+              method: "POST",
+              sendBody: true,
+              bodyParameters: {
+                videoUrl: "={{$node['Optimize for Platform'].json['optimizedVideoUrl']}}",
+                script: "={{$node['Enhance Script with Context'].json['enhancedScript']}}",
+                language: "ja",
+                style: "modern"
+              }
+            }
+          },
+          {
+            id: "post_content",
+            name: "Multi-Platform Posting",
+            type: "n8n-nodes-base.httpRequest",
+            position: [1600, 0],
+            parameters: {
+              url: "/api/social/multi-platform-post",
+              method: "POST", 
+              sendBody: true,
+              bodyParameters: {
+                videoUrl: "={{$node['Generate Auto Captions'].json['captionedVideoUrl']}}",
+                caption: "={{$node['Enhance Script with Context'].json['socialCaption']}}",
+                platforms: [platform],
+                scheduleTime: "optimal"
+              }
+            }
+          }
+        ],
+        connections: {
+          "Content Trigger": {
+            "main": [["Generate Character Script with Gemini"]]
+          },
+          "Generate Character Script with Gemini": {
+            "main": [["Enhance Script with Context"]]
+          },
+          "Enhance Script with Context": {
+            "main": [["Generate AI Character Video", "Generate Voice with TTS"]]
+          },
+          "Generate AI Character Video": {
+            "main": [["Synchronize Lip Movement"]]
+          },
+          "Generate Voice with TTS": {
+            "main": [["Synchronize Lip Movement"]]
+          },
+          "Synchronize Lip Movement": {
+            "main": [["Optimize for Platform"]]
+          },
+          "Optimize for Platform": {
+            "main": [["Generate Auto Captions"]]
+          },
+          "Generate Auto Captions": {
+            "main": [["Multi-Platform Posting"]]
+          }
+        }
+      }
+    };
+
+    return template as N8nTemplate;
+  }
+
+  private startAutoSync(): void {
+    if (!this.gitConfig?.autoSync) return;
+    
+    setInterval(async () => {
+      try {
+        await this.syncWithGitRepository();
+        console.log('Auto-sync completed successfully');
+      } catch (error) {
+        console.error('Auto-sync failed:', error);
+      }
+    }, this.gitConfig.syncInterval * 60 * 1000);
   }
 
   async optimizeTemplate(

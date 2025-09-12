@@ -1,0 +1,636 @@
+{
+  "name": "Enhanced AI Integration Templates",
+  "version": "2.0.0",
+  "description": "Phase 1 Enhanced AI Integration workflows for ultimate social media automation",
+  "author": "Urepli AI Team",
+  "templates": [
+    {
+      "id": "hyper-realistic-character-pipeline",
+      "name": "Hyper-Realistic AI Character Content Pipeline",
+      "description": "Complete workflow for generating hyper-realistic AI characters with LLM-scripted content",
+      "category": "ai-character-generation",
+      "tags": ["ai", "character", "hyperrealistic", "llm", "automation"],
+      "nodes": [
+        {
+          "id": "content_trigger",
+          "name": "Smart Content Trigger",
+          "type": "n8n-nodes-base.cron",
+          "position": [0, 0],
+          "parameters": {
+            "rule": "0 */3 * * *",
+            "timezone": "Asia/Tokyo"
+          }
+        },
+        {
+          "id": "market_research",
+          "name": "AI Market Research",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [200, 0],
+          "parameters": {
+            "url": "/api/enhanced-ai/analytics/comprehensive",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "competitorConfig": {
+                "competitors": [
+                  {"name": "TopCreator", "platforms": ["tiktok"], "trackingEnabled": true}
+                ],
+                "metrics": ["engagement", "content_types"]
+              },
+              "sentimentConfig": {
+                "keywords": ["AI", "automation"],
+                "sources": ["twitter"],
+                "timeframe": "last_day"
+              }
+            }
+          }
+        },
+        {
+          "id": "trend_analysis",
+          "name": "Extract Trending Topics",
+          "type": "n8n-nodes-base.code",
+          "position": [400, 0],
+          "parameters": {
+            "jsCode": "const analytics = $input.first().json; const trends = analytics.marketSentiment?.trendingTopics || []; return trends.map(topic => ({json: {topic: topic.topic, sentiment: topic.sentiment}}));"
+          }
+        },
+        {
+          "id": "script_generation",
+          "name": "Generate Character Script with Gemini",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [600, 0],
+          "parameters": {
+            "url": "/api/content/generate-script",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "prompt": "Create engaging 30-second script about: {{$node['Extract Trending Topics'].json['topic']}}",
+              "characterType": "japanese_female_tech_enthusiast",
+              "platform": "tiktok",
+              "tone": "energetic_friendly",
+              "includeHook": true,
+              "includeCTA": true
+            }
+          }
+        },
+        {
+          "id": "character_config",
+          "name": "Configure AI Character",
+          "type": "n8n-nodes-base.code",
+          "position": [800, 0],
+          "parameters": {
+            "jsCode": "return [{json: {characterConfig: {gender: 'female', ethnicity: 'japanese', age: 'young', style: 'hyperrealistic', clothing: 'modern casual tech wear', background: 'minimalist tech office', emotions: ['confident', 'enthusiastic'], voice: {language: 'japanese', accent: 'tokyo', tone: 'energetic'}}}}];"
+          }
+        },
+        {
+          "id": "generate_character",
+          "name": "Generate Hyper-Realistic Character",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1000, 0],
+          "parameters": {
+            "url": "/api/enhanced-ai/video/generate-character",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "characterConfig": "={{$node['Configure AI Character'].json['characterConfig']}}",
+              "scriptPrompt": "={{$node['Generate Character Script with Gemini'].json['script']}}",
+              "platform": "tiktok"
+            }
+          }
+        },
+        {
+          "id": "optimize_content",
+          "name": "ML Content Optimization",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1200, 0],
+          "parameters": {
+            "url": "/api/enhanced-ai/ml/optimize-content",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "content": {
+                "type": "video",
+                "url": "={{$node['Generate Hyper-Realistic Character'].json['video']['videoUrl']}}",
+                "text": "={{$node['Generate Character Script with Gemini'].json['script']}}",
+                "metadata": {"duration": 30, "language": "japanese"}
+              },
+              "targetPlatforms": ["tiktok", "instagram"],
+              "audience": {
+                "demographics": ["18-35", "tech-interested"],
+                "interests": ["AI", "automation"],
+                "location": "japan",
+                "timeZone": "Asia/Tokyo"
+              },
+              "objectives": ["engagement", "reach"]
+            }
+          }
+        },
+        {
+          "id": "platform_remixing",
+          "name": "Multi-Platform Content Remixing",
+          "type": "n8n-nodes-base.code",
+          "position": [1400, 0],
+          "parameters": {
+            "jsCode": "const optimization = $input.first().json; const remixes = optimization.optimization?.contentRemixes || []; return remixes.map(remix => ({json: {platform: remix.platform, content: remix.remixedContent}}));"
+          }
+        },
+        {
+          "id": "schedule_posting",
+          "name": "Intelligent Scheduling",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1600, 0],
+          "parameters": {
+            "url": "/api/social/intelligent-schedule",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "videoUrl": "={{$node['Generate Hyper-Realistic Character'].json['video']['videoUrl']}}",
+              "platform": "={{$node['Multi-Platform Content Remixing'].json['platform']}}",
+              "optimizedContent": "={{$node['Multi-Platform Content Remixing'].json['content']}}",
+              "optimalTimes": "={{$node['ML Content Optimization'].json['optimization']['trendPredictions']['optimal_posting_times']}}"
+            }
+          }
+        },
+        {
+          "id": "performance_tracking",
+          "name": "Real-time Performance Tracking",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1800, 0],
+          "parameters": {
+            "url": "/api/analytics/track-performance",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "contentId": "={{$node['Generate Hyper-Realistic Character'].json['video']['generationId']}}",
+              "platform": "={{$node['Multi-Platform Content Remixing'].json['platform']}}",
+              "predictions": "={{$node['ML Content Optimization'].json['optimization']['performancePrediction']}}",
+              "trackingInterval": "hourly"
+            }
+          }
+        }
+      ],
+      "connections": {
+        "Smart Content Trigger": {"main": [["AI Market Research"]]},
+        "AI Market Research": {"main": [["Extract Trending Topics"]]},
+        "Extract Trending Topics": {"main": [["Generate Character Script with Gemini"]]},
+        "Generate Character Script with Gemini": {"main": [["Configure AI Character"]]},
+        "Configure AI Character": {"main": [["Generate Hyper-Realistic Character"]]},
+        "Generate Hyper-Realistic Character": {"main": [["ML Content Optimization"]]},
+        "ML Content Optimization": {"main": [["Multi-Platform Content Remixing"]]},
+        "Multi-Platform Content Remixing": {"main": [["Intelligent Scheduling"]]},
+        "Intelligent Scheduling": {"main": [["Real-time Performance Tracking"]]}
+      }
+    },
+    {
+      "id": "real-time-video-editing-pipeline",
+      "name": "AI-Powered Real-Time Video Editing Pipeline",
+      "description": "Automated video editing with AI enhancements and platform optimization",
+      "category": "video-editing",
+      "tags": ["video", "editing", "ai", "realtime", "enhancement"],
+      "nodes": [
+        {
+          "id": "video_input",
+          "name": "Video Input Trigger",
+          "type": "n8n-nodes-base.webhook",
+          "position": [0, 0],
+          "parameters": {
+            "path": "video-edit",
+            "httpMethod": "POST"
+          }
+        },
+        {
+          "id": "video_analysis",
+          "name": "AI Video Content Analysis",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [200, 0],
+          "parameters": {
+            "url": "/api/video/analyze-content",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "videoUrl": "={{$node['Video Input Trigger'].json['videoUrl']}}",
+              "analysisDepth": "comprehensive",
+              "extractKeyframes": true,
+              "analyzeAudio": true,
+              "detectScenes": true
+            }
+          }
+        },
+        {
+          "id": "editing_strategy",
+          "name": "Generate AI Editing Strategy",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [400, 0],
+          "parameters": {
+            "url": "/api/ai/generate-editing-strategy",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "videoAnalysis": "={{$node['AI Video Content Analysis'].json}}",
+              "targetPlatform": "={{$node['Video Input Trigger'].json['platform'] || 'tiktok'}}",
+              "objectives": ["engagement", "retention", "virality"],
+              "style": "modern_dynamic"
+            }
+          }
+        },
+        {
+          "id": "realtime_editing",
+          "name": "Execute Real-Time AI Editing",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [600, 0],
+          "parameters": {
+            "url": "/api/enhanced-ai/video/realtime-edit",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "inputVideoUrl": "={{$node['Video Input Trigger'].json['videoUrl']}}",
+              "editingInstructions": "={{$node['Generate AI Editing Strategy'].json['instructions']}}",
+              "effects": "={{$node['Generate AI Editing Strategy'].json['recommendedEffects']}}"
+            }
+          }
+        },
+        {
+          "id": "custom_animations",
+          "name": "Add Custom AI Animations",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [800, 0],
+          "parameters": {
+            "url": "/api/enhanced-ai/video/create-animations",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "elements": [
+                {"type": "intro", "content": "Dynamic intro animation", "animation": "zoom_burst"},
+                {"type": "transition", "content": "Scene transitions", "animation": "smooth_slide"},
+                {"type": "outro", "content": "Call to action outro", "animation": "bounce_cta"}
+              ],
+              "duration": "={{$node['Execute Real-Time AI Editing'].json['video']['duration']}}",
+              "style": "cinematic"
+            }
+          }
+        },
+        {
+          "id": "quality_enhancement",
+          "name": "AI Quality Enhancement",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1000, 0],
+          "parameters": {
+            "url": "/api/video/enhance-quality",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "videoUrl": "={{$node['Add Custom AI Animations'].json['video']['videoUrl']}}",
+              "enhancements": ["upscaling", "noise_reduction", "color_grading", "stabilization"],
+              "targetQuality": "4k",
+              "preserveOriginalAspect": false
+            }
+          }
+        },
+        {
+          "id": "platform_optimization",
+          "name": "Platform-Specific Optimization",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1200, 0],
+          "parameters": {
+            "url": "/api/video/optimize-platform",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "videoUrl": "={{$node['AI Quality Enhancement'].json['enhancedVideoUrl']}}",
+              "platform": "={{$node['Video Input Trigger'].json['platform'] || 'tiktok'}}",
+              "aspectRatio": "auto",
+              "addCaptions": true,
+              "addThumbnail": true
+            }
+          }
+        },
+        {
+          "id": "final_output",
+          "name": "Output Processed Video",
+          "type": "n8n-nodes-base.code",
+          "position": [1400, 0],
+          "parameters": {
+            "jsCode": "const result = $input.first().json; return [{json: {success: true, processedVideo: result.optimizedVideoUrl, thumbnail: result.thumbnailUrl, processingTime: Date.now() - $node['Video Input Trigger'].json.timestamp, analytics: result.analytics}}];"
+          }
+        }
+      ],
+      "connections": {
+        "Video Input Trigger": {"main": [["AI Video Content Analysis"]]},
+        "AI Video Content Analysis": {"main": [["Generate AI Editing Strategy"]]},
+        "Generate AI Editing Strategy": {"main": [["Execute Real-Time AI Editing"]]},
+        "Execute Real-Time AI Editing": {"main": [["Add Custom AI Animations"]]},
+        "Add Custom AI Animations": {"main": [["AI Quality Enhancement"]]},
+        "AI Quality Enhancement": {"main": [["Platform-Specific Optimization"]]},
+        "Platform-Specific Optimization": {"main": [["Output Processed Video"]]}
+      }
+    },
+    {
+      "id": "ml-content-optimization-workflow",
+      "name": "ML-Powered Content Optimization & Trend Prediction",
+      "description": "Advanced ML workflow for content optimization, trend prediction, and automated remixing",
+      "category": "ml-optimization", 
+      "tags": ["ml", "optimization", "trends", "prediction", "automation"],
+      "nodes": [
+        {
+          "id": "optimization_trigger",
+          "name": "Optimization Trigger",
+          "type": "n8n-nodes-base.cron",
+          "position": [0, 0],
+          "parameters": {
+            "rule": "0 */6 * * *",
+            "timezone": "Asia/Tokyo"
+          }
+        },
+        {
+          "id": "content_analysis",
+          "name": "Analyze Existing Content",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [200, 0],
+          "parameters": {
+            "url": "/api/content/analyze-library",
+            "method": "GET",
+            "qs": {
+              "timeframe": "last_week",
+              "platforms": "tiktok,instagram,youtube",
+              "includePerformance": "true"
+            }
+          }
+        },
+        {
+          "id": "ml_optimization",
+          "name": "ML Content Optimization",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [400, 0],
+          "parameters": {
+            "url": "/api/enhanced-ai/ml/optimize-content",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "content": "={{$node['Analyze Existing Content'].json['topPerformingContent']}}",
+              "targetPlatforms": ["tiktok", "instagram", "youtube"],
+              "audience": {
+                "demographics": ["18-35", "tech-savvy"],
+                "interests": ["AI", "automation", "social media"],
+                "location": "japan",
+                "timeZone": "Asia/Tokyo"
+              },
+              "objectives": ["engagement", "reach", "conversions"]
+            }
+          }
+        },
+        {
+          "id": "trend_prediction",
+          "name": "AI Trend Prediction",
+          "type": "n8n-nodes-base.code",
+          "position": [600, 0],
+          "parameters": {
+            "jsCode": "const optimization = $input.first().json; const trends = optimization.optimization?.trendPredictions || {}; return [{json: {trendingTopics: trends.trending_topics, emergingHashtags: trends.emerging_hashtags, optimalTimes: trends.optimal_posting_times, decliningTopics: trends.declining_topics}}];"
+          }
+        },
+        {
+          "id": "content_remixing",
+          "name": "Automated Content Remixing",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [800, 0],
+          "parameters": {
+            "url": "/api/content/auto-remix",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "originalContent": "={{$node['Analyze Existing Content'].json['topPerformingContent']}}",
+              "trendingTopics": "={{$node['AI Trend Prediction'].json['trendingTopics']}}",
+              "targetPlatforms": ["tiktok", "instagram", "youtube"],
+              "remixStrategies": ["trending_integration", "format_adaptation", "audience_personalization"]
+            }
+          }
+        },
+        {
+          "id": "performance_prediction",
+          "name": "Predict Content Performance",
+          "type": "n8n-nodes-base.code",
+          "position": [1000, 0],
+          "parameters": {
+            "jsCode": "const optimization = $input.first().json; const predictions = optimization.optimization?.performancePrediction || []; return predictions.map(p => ({json: {platform: p.platform, expectedViews: p.expectedViews, expectedEngagement: p.expectedEngagement, confidence: p.confidence}}));"
+          }
+        },
+        {
+          "id": "content_scheduling",
+          "name": "Smart Content Scheduling",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1200, 0],
+          "parameters": {
+            "url": "/api/scheduling/optimize-timing",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "remixedContent": "={{$node['Automated Content Remixing'].json}}",
+              "optimalTimes": "={{$node['AI Trend Prediction'].json['optimalTimes']}}",
+              "performancePredictions": "={{$node['Predict Content Performance'].json}}",
+              "schedulingStrategy": "performance_maximization"
+            }
+          }
+        },
+        {
+          "id": "roi_optimization",
+          "name": "ROI Optimization Engine",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1400, 0],
+          "parameters": {
+            "url": "/api/optimization/roi-maximize",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "scheduledContent": "={{$node['Smart Content Scheduling'].json}}",
+              "budgetAllocation": "auto",
+              "objectives": ["maximize_engagement", "optimize_costs", "increase_conversions"],
+              "timeframe": "30_days"
+            }
+          }
+        }
+      ],
+      "connections": {
+        "Optimization Trigger": {"main": [["Analyze Existing Content"]]},
+        "Analyze Existing Content": {"main": [["ML Content Optimization"]]},
+        "ML Content Optimization": {"main": [["AI Trend Prediction", "Predict Content Performance"]]},
+        "AI Trend Prediction": {"main": [["Automated Content Remixing"]]},
+        "Automated Content Remixing": {"main": [["Smart Content Scheduling"]]},
+        "Smart Content Scheduling": {"main": [["ROI Optimization Engine"]]}
+      }
+    },
+    {
+      "id": "advanced-analytics-competitor-intelligence",
+      "name": "Advanced Analytics & Competitor Intelligence System",
+      "description": "Comprehensive competitor analysis, market sentiment monitoring, and ROI prediction",
+      "category": "analytics",
+      "tags": ["analytics", "competitor", "sentiment", "roi", "intelligence"],
+      "nodes": [
+        {
+          "id": "analytics_trigger", 
+          "name": "Daily Analytics Trigger",
+          "type": "n8n-nodes-base.cron",
+          "position": [0, 0],
+          "parameters": {
+            "rule": "0 9 * * *",
+            "timezone": "Asia/Tokyo"
+          }
+        },
+        {
+          "id": "competitor_discovery",
+          "name": "AI Competitor Discovery",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [200, 0],
+          "parameters": {
+            "url": "/api/ai/discover-competitors",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "industry": "social_media_automation",
+              "platforms": ["tiktok", "instagram", "youtube"],
+              "region": "japan",
+              "minFollowers": 10000,
+              "discoveryCriteria": ["similar_content", "overlapping_audience", "competing_keywords"]
+            }
+          }
+        },
+        {
+          "id": "comprehensive_analytics",
+          "name": "Run Comprehensive Analytics",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [400, 0],
+          "parameters": {
+            "url": "/api/enhanced-ai/analytics/comprehensive",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "competitorConfig": "={{$node['AI Competitor Discovery'].json['competitorConfig']}}",
+              "sentimentConfig": {
+                "keywords": ["AI automation", "social media tools", "content creation"],
+                "languages": ["japanese", "english"],
+                "sources": ["twitter", "reddit", "news"],
+                "geolocation": ["japan"],
+                "timeframe": "last_day"
+              },
+              "roiConfig": {
+                "campaigns": "={{$node['AI Competitor Discovery'].json['activeCampaigns']}}",
+                "historicalData": "auto_fetch"
+              }
+            }
+          }
+        },
+        {
+          "id": "competitor_insights",
+          "name": "Extract Competitor Insights",
+          "type": "n8n-nodes-base.code",
+          "position": [600, 0],
+          "parameters": {
+            "jsCode": "const analytics = $input.first().json; const competitors = analytics.analytics?.competitorAnalysis || {}; return [{json: {topCompetitor: competitors.summary?.topPerformingCompetitor, marketGaps: competitors.marketGaps, opportunities: competitors.recommendations}}];"
+          }
+        },
+        {
+          "id": "sentiment_monitoring",
+          "name": "Market Sentiment Analysis", 
+          "type": "n8n-nodes-base.code",
+          "position": [600, 200],
+          "parameters": {
+            "jsCode": "const analytics = $input.first().json; const sentiment = analytics.analytics?.marketSentiment || {}; return [{json: {overallSentiment: sentiment.overallSentiment, trendingTopics: sentiment.trendingTopics, alerts: sentiment.alertsTriggered}}];"
+          }
+        },
+        {
+          "id": "roi_predictions",
+          "name": "ROI Predictions & Forecasting",
+          "type": "n8n-nodes-base.code", 
+          "position": [600, 400],
+          "parameters": {
+            "jsCode": "const analytics = $input.first().json; const roi = analytics.analytics?.roiPrediction || {}; return [{json: {portfolioROI: roi.portfolioROI, campaignPredictions: roi.campaigns, budgetOptimization: roi.budgetAllocation}}];"
+          }
+        },
+        {
+          "id": "strategy_recommendations",
+          "name": "Generate AI Strategy Recommendations",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [800, 0],
+          "parameters": {
+            "url": "/api/ai/generate-strategy",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "competitorInsights": "={{$node['Extract Competitor Insights'].json}}",
+              "sentimentData": "={{$node['Market Sentiment Analysis'].json}}",
+              "roiData": "={{$node['ROI Predictions & Forecasting'].json}}",
+              "objectives": ["market_differentiation", "engagement_optimization", "roi_maximization"]
+            }
+          }
+        },
+        {
+          "id": "alert_system",
+          "name": "Intelligent Alert System",
+          "type": "n8n-nodes-base.code",
+          "position": [1000, 0],
+          "parameters": {
+            "jsCode": "const sentiment = $node['Market Sentiment Analysis'].json; const alerts = sentiment.alerts || []; const highPriorityAlerts = alerts.filter(a => a.severity === 'high'); if (highPriorityAlerts.length > 0) { return [{json: {alertType: 'high_priority', alerts: highPriorityAlerts, action: 'immediate_attention_required'}}]; } return [{json: {alertType: 'normal', message: 'no_critical_alerts'}}];"
+          }
+        },
+        {
+          "id": "dashboard_update",
+          "name": "Update Analytics Dashboard",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1200, 0],
+          "parameters": {
+            "url": "/api/dashboard/update-analytics",
+            "method": "POST",
+            "sendBody": true,
+            "bodyParameters": {
+              "competitorData": "={{$node['Extract Competitor Insights'].json}}",
+              "sentimentData": "={{$node['Market Sentiment Analysis'].json}}",
+              "roiData": "={{$node['ROI Predictions & Forecasting'].json}}",
+              "recommendations": "={{$node['Generate AI Strategy Recommendations'].json}}",
+              "alerts": "={{$node['Intelligent Alert System'].json}}",
+              "timestamp": "={{new Date().toISOString()}}"
+            }
+          }
+        }
+      ],
+      "connections": {
+        "Daily Analytics Trigger": {"main": [["AI Competitor Discovery"]]},
+        "AI Competitor Discovery": {"main": [["Run Comprehensive Analytics"]]},
+        "Run Comprehensive Analytics": {"main": [["Extract Competitor Insights", "Market Sentiment Analysis", "ROI Predictions & Forecasting"]]},
+        "Extract Competitor Insights": {"main": [["Generate AI Strategy Recommendations"]]},
+        "Market Sentiment Analysis": {"main": [["Generate AI Strategy Recommendations", "Intelligent Alert System"]]},
+        "ROI Predictions & Forecasting": {"main": [["Generate AI Strategy Recommendations"]]},
+        "Generate AI Strategy Recommendations": {"main": [["Update Analytics Dashboard"]]},
+        "Intelligent Alert System": {"main": [["Update Analytics Dashboard"]]}
+      }
+    }
+  ],
+  "metadata": {
+    "requirements": {
+      "n8nVersion": ">=1.0.0",
+      "customNodes": [
+        "n8n-nodes-urepli",
+        "n8n-nodes-comfyui",
+        "n8n-nodes-gemini"
+      ],
+      "services": [
+        "ComfyUI Server",
+        "Gemini API",
+        "ML Optimization Engine",
+        "Advanced Analytics Service"
+      ]
+    },
+    "installation": {
+      "steps": [
+        "Install Urepli custom node package",
+        "Configure API endpoints",
+        "Set up ComfyUI integration",
+        "Configure Gemini API keys",
+        "Import workflow templates",
+        "Test each workflow individually"
+      ]
+    },
+    "usage": {
+      "beginner": "Use pre-configured templates as-is",
+      "intermediate": "Modify parameters and add custom nodes",
+      "advanced": "Create custom workflows combining multiple templates"
+    }
+  }
+}
