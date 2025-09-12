@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { searchRakutenItems } from '../services/rakuten.service';
+import { searchYahooShoppingItems } from '../services/yahoo-shopping.service';
+import { searchAmazonItems } from '../services/amazon-paapi.service';
 import { getBestOfferByERPC, calculateERPC, getNetworkPerformance } from '../services/erpc.service';
 import { thompsonSamplingBandit } from '../services/bandit.service';
 import { eventsOrchestrator } from '../services/events-orchestrator.service';
@@ -106,7 +108,124 @@ router.post('/record-metric', async (req, res) => {
   }
 });
 
-// Search Rakuten specifically
+// Search Yahoo Shopping specifically
+const yahooSearchSchema = z.object({
+  query: z.string().min(1),
+  category_id: z.string().optional(),
+  price_from: z.number().optional(),
+  price_to: z.number().optional(),
+  sort: z.string().optional(),
+  results: z.number().optional().default(20)
+});
+
+router.get('/yahoo/search', async (req, res) => {
+  try {
+    const params = yahooSearchSchema.parse(req.query);
+    
+    const offers = await searchYahooShoppingItems(params);
+    
+    res.json({
+      success: true,
+      data: offers,
+      message: `Found ${offers.length} Yahoo Shopping offers`
+    });
+  } catch (error) {
+    console.error('Yahoo Shopping search error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to search Yahoo Shopping'
+    });
+  }
+});
+
+// Search Amazon specifically
+const amazonSearchSchema = z.object({
+  keywords: z.string().min(1),
+  searchIndex: z.string().optional(),
+  itemCount: z.number().optional().default(10),
+  itemPage: z.number().optional().default(1),
+  minPrice: z.number().optional(),
+  maxPrice: z.number().optional()
+});
+
+router.get('/amazon/search', async (req, res) => {
+  try {
+    const params = amazonSearchSchema.parse(req.query);
+    
+    const offers = await searchAmazonItems(params);
+    
+    res.json({
+      success: true,
+      data: offers,
+      message: `Found ${offers.length} Amazon offers`
+    });
+  } catch (error) {
+    console.error('Amazon search error:', error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to search Amazon'
+    });
+  }
+});
+
+// Multi-network search endpoint
+const multiNetworkSearchSchema = z.object({
+  keyword: z.string().min(1),
+  networks: z.array(z.enum(['rakuten', 'yahoo', 'amazon'])).optional(),
+  limit_per_network: z.number().optional().default(10)
+});
+
+router.get('/multi-search', async (req, res) => {
+  try {
+    const { keyword, networks = ['rakuten', 'yahoo', 'amazon'], limit_per_network } = multiNetworkSearchSchema.parse(req.query);
+    
+    const searchPromises = [];
+    
+    if (networks.includes('rakuten')) {
+      searchPromises.push(
+        searchRakutenItems({ keyword, hits: limit_per_network })
+          .then(results => ({ network: 'rakuten', results }))
+          .catch(error => ({ network: 'rakuten', results: [], error: error.message }))
+      );
+    }
+    
+    if (networks.includes('yahoo')) {
+      searchPromises.push(
+        searchYahooShoppingItems({ query: keyword, results: limit_per_network })
+          .then(results => ({ network: 'yahoo', results }))
+          .catch(error => ({ network: 'yahoo', results: [], error: error.message }))
+      );
+    }
+    
+    if (networks.includes('amazon')) {
+      searchPromises.push(
+        searchAmazonItems({ keywords: keyword, itemCount: limit_per_network })
+          .then(results => ({ network: 'amazon', results }))
+          .catch(error => ({ network: 'amazon', results: [], error: error.message }))
+      );
+    }
+    
+    const searchResults = await Promise.all(searchPromises);
+    
+    // Combine and get best eRPC offers
+    const allOffers = await getBestOfferByERPC(keyword, 50);
+    
+    res.json({
+      success: true,
+      data: {
+        combined_offers: allOffers.slice(0, 20), // Top 20 by eRPC
+        by_network: searchResults
+      },
+      message: `Multi-network search completed for "${keyword}"`
+    });
+  } catch (error) {
+    console.error('Multi-network search error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to perform multi-network search'
+    });
+  }
+});
 const rakutenSearchSchema = z.object({
   keyword: z.string().min(1),
   genreId: z.number().optional(),
