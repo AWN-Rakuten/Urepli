@@ -2,7 +2,7 @@ import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 import { GeminiService } from './gemini';
-import { BanditAlgorithmService } from './bandit.service';
+import { ThompsonSamplingBandit } from './bandit.service';
 import type { SocialMediaAccount, N8nTemplate } from '@shared/schema';
 import crypto from 'crypto';
 
@@ -61,22 +61,33 @@ export class MCPServer {
   private server: any;
   private wss: WebSocketServer;
   private geminiService: GeminiService;
-  private banditService: BanditAlgorithmService;
+  private banditService: ThompsonSamplingBandit;
   private clients: Map<string, ClientSession> = new Map();
   private readonly maxConnections: number = 1000;
   private readonly rateLimitPerSecond: number = 10;
   private healthCheckInterval: NodeJS.Timeout;
 
   constructor(port: number = 3001) {
-    this.server = createServer();
+    this.geminiService = new GeminiService();
+    this.banditService = new ThompsonSamplingBandit();
+    
+    // Create HTTP server for GUI
+    const app = express();
+    app.use(express.json());
+    app.use(express.static('public/mcp-gui'));
+    
+    // Set up GUI routes
+    this.setupGUIRoutes(app);
+    
+    this.server = createServer(app);
+    
+    // Set up WebSocket server for MCP protocol
     this.wss = new WebSocketServer({ 
       server: this.server,
+      path: '/mcp-ws',
       maxPayload: 1024 * 1024 * 10, // 10MB max payload
       perMessageDeflate: true
     });
-    
-    this.geminiService = new GeminiService();
-    this.banditService = new BanditAlgorithmService();
     
     this.setupWebSocketHandlers();
     this.setupHealthCheck();
@@ -85,6 +96,7 @@ export class MCPServer {
       console.log(`🚀 MCP Server running on port ${port}`);
       console.log(`📊 Max connections: ${this.maxConnections}`);
       console.log(`⚡ Rate limit: ${this.rateLimitPerSecond} req/sec per client`);
+      console.log(`🌐 GUI available at: http://localhost:${port}/mcp`);
     });
   }
   
@@ -121,29 +133,6 @@ export class MCPServer {
       campaignOptimization: true
     }
   };
-
-  constructor(port: number = 3001) {
-    this.geminiService = new GeminiService();
-    this.banditService = new BanditAlgorithmService();
-    
-    // Create HTTP server for GUI
-    const app = express();
-    app.use(express.json());
-    app.use(express.static('public/mcp-gui'));
-    
-    // Set up GUI routes
-    this.setupGUIRoutes(app);
-    
-    this.server = createServer(app);
-    
-    // Set up WebSocket server for MCP protocol
-    this.wss = new WebSocketServer({ 
-      server: this.server,
-      path: '/mcp-ws'
-    });
-    
-    this.setupWebSocketHandlers();
-  }
 
   private setupGUIRoutes(app: express.Application): void {
     // Serve MCP GUI dashboard
@@ -969,86 +958,5 @@ export class MCPServer {
     
     client.rateLimitBucket -= 1;
     return false;
-  }
-
-  private setupWebSocketHandlers(): void {
-    this.wss.on('connection', (ws, req) => {
-      if (this.clients.size >= this.maxConnections) {
-        ws.close(1008, 'Server at capacity');
-        return;
-      }
-
-      const clientId = this.generateClientId();
-      const client: ClientSession = {
-        id: clientId,
-        ws,
-        authenticated: false,
-        capabilities: this.capabilities,
-        lastActivity: new Date(),
-        rateLimitBucket: this.rateLimitPerSecond,
-        rateLimitRefill: Date.now()
-      };
-      
-      this.clients.set(clientId, client);
-      console.log(`🔌 MCP client connected: ${clientId} (${this.clients.size}/${this.maxConnections})`);
-
-      ws.on('message', async (data) => {
-        try {
-          client.lastActivity = new Date();
-
-          // Rate limiting
-          if (this.isRateLimited(client)) {
-            const errorResponse: MCPResponse = {
-              id: 'rate_limit',
-              error: { code: 429, message: 'Rate limit exceeded' },
-              jsonrpc: '2.0'
-            };
-            ws.send(JSON.stringify(errorResponse));
-            return;
-          }
-
-          const request: MCPRequest = JSON.parse(data.toString());
-          const response = await this.handleMCPRequest(clientId, request);
-          ws.send(JSON.stringify(response));
-        } catch (error) {
-          const errorResponse: MCPResponse = {
-            id: 'unknown',
-            error: {
-              code: -32700,
-              message: 'Parse error',
-              data: error instanceof Error ? error.message : 'Unknown error'
-            },
-            jsonrpc: '2.0'
-          };
-          ws.send(JSON.stringify(errorResponse));
-        }
-      });
-
-      ws.on('close', () => {
-        this.clients.delete(clientId);
-        console.log(`🔌 MCP client disconnected: ${clientId} (${this.clients.size}/${this.maxConnections})`);
-      });
-
-      ws.on('error', (error) => {
-        console.error(`WebSocket error for client ${clientId}:`, error);
-        this.clients.delete(clientId);
-      });
-
-      // Send initial capabilities
-      ws.send(JSON.stringify({
-        id: 'init',
-        result: {
-          type: 'capabilities',
-          capabilities: this.capabilities,
-          serverInfo: {
-            name: 'Urepli MCP Server - Commercial Grade',
-            version: '1.0.0',
-            maxConnections: this.maxConnections,
-            rateLimit: this.rateLimitPerSecond
-          }
-        },
-        jsonrpc: '2.0'
-      }));
-    });
   }
 }

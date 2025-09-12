@@ -227,6 +227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: "content_generation",
         message: `Generated script for ${platform}: "${script.title}"`,
         status: "success",
+        workflowId: null,
         metadata: { niche, platform, hookType, estimatedEngagement: script.estimatedEngagement }
       });
 
@@ -236,6 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: "content_generation",
         message: `Failed to generate script: ${error}`,
         status: "error",
+        workflowId: null,
         metadata: { error: String(error) }
       });
       res.status(500).json({ error: "Failed to generate content script" });

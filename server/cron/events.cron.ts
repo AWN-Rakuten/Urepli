@@ -22,7 +22,7 @@ export function setupEventsCronJobs() {
       console.error('❌ Event calendar sync failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 
@@ -36,7 +36,7 @@ export function setupEventsCronJobs() {
       console.error('❌ Pre-event notification failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 
@@ -58,7 +58,7 @@ export function setupEventsCronJobs() {
       console.error('❌ Event status check failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 
@@ -81,7 +81,7 @@ export function setupEventsCronJobs() {
       console.error('❌ Weekly event summary failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 

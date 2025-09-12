@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
 interface ResearchBriefRequest {
   seed: string;
@@ -50,14 +50,14 @@ interface ResearchBriefResponse {
 }
 
 class ResearchService {
-  private gemini: GoogleGenerativeAI;
+  private gemini: GoogleGenAI;
   private model: any;
 
   constructor() {
     if (!process.env.GOOGLE_GEMINI_API_KEY) {
       throw new Error('GOOGLE_GEMINI_API_KEY is required for research service');
     }
-    this.gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+    this.gemini = new GoogleGenAI(process.env.GOOGLE_GEMINI_API_KEY);
     this.model = this.gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
   }
 

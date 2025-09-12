@@ -37,7 +37,7 @@ export function setupTrendsCronJob() {
       console.error('❌ TikTok trends harvesting failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 
@@ -56,7 +56,7 @@ export function setupTrendsCronJob() {
       console.error('❌ Hashtag update failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 
