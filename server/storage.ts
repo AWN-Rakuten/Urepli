@@ -96,6 +96,14 @@ export interface IStorage {
   createPostingSchedule(schedule: any): Promise<any>;
   updatePostingSchedule(id: string, updates: any): Promise<any>;
   getPostCount(accountId: string, startTime: Date, endTime: Date): Promise<number>;
+
+  // Smartphone Automation - Optional methods for storage implementations that support it
+  getSmartphoneDevices?(): Promise<any[]>;
+  updateSmartphoneDevice?(id: string, device: any): Promise<any>;
+  updateContentWatchingSession?(sessionId: string, session: any): Promise<any>;
+  getSmartphoneWorkflows?(): Promise<any[]>;
+  saveSmartphoneWorkflow?(workflow: any): Promise<any>;
+  saveWorkflowReport?(workflowId: string, report: any): Promise<any>;
 }
 
 export class MemStorage implements IStorage {

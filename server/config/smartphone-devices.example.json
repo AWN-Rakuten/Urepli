@@ -1,0 +1,40 @@
+{
+  "devices": [
+    {
+      "id": "device_001",
+      "udid": "REPLACE_WITH_ACTUAL_UDID",
+      "name": "Device 1 - TikTok Primary",
+      "platform": "android",
+      "osVersion": "13.0",
+      "screenResolution": {
+        "width": 1080,
+        "height": 2340,
+        "density": 3
+      },
+      "capabilities": {
+        "canPostVideo": true,
+        "canWatchContent": true,
+        "canEngageContent": true,
+        "supportedPlatforms": [
+          "tiktok",
+          "instagram",
+          "youtube"
+        ]
+      },
+      "proxyConfig": {
+        "server": "your-mobile-proxy.com",
+        "port": 8080,
+        "username": "proxy_user",
+        "password": "proxy_pass",
+        "country": "JP"
+      },
+      "accountAssignments": [
+        {
+          "platform": "tiktok",
+          "accountId": "tiktok_account_1",
+          "username": "your_tiktok_username"
+        }
+      ]
+    }
+  ]
+}

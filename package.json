@@ -14,7 +14,11 @@
     "setup:complete": "npm install && npm run db:push && npm run install:n8n",
     "test": "jest",
     "lint": "eslint . --ext .ts,.tsx",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "smartphone:setup": "node scripts/setup-smartphone-automation.js",
+    "smartphone:devices": "adb devices",
+    "smartphone:appium": "appium --relaxed-security --allow-insecure chromedriver_autodownload",
+    "smartphone:test": "node scripts/test-smartphone-integration.js"
   },
   "dependencies": {
     "@google-cloud/bigquery": "^8.1.1",
@@ -86,7 +90,6 @@
     "chart.js": "^4.5.0",
     "cheerio": "^1.1.2",
     "chrome-launcher": "^1.2.0",
-
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
