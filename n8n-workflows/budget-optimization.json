@@ -1,0 +1,381 @@
+{
+  "name": "Budget Optimization & Performance Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 23 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Daily 08:00 JST Budget Optimization",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/metrics/performance-summary",
+        "options": {}
+      },
+      "name": "Get Performance Data",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate optimization constraints\nconst performance = $input.all()[0].json.data;\n\n// Base budget from revenue (30% of revenue as budget)\nconst totalBudget = Math.round(performance.totalRevenue * 0.3);\n\n// ROAS constraints based on historical performance\nconst minROAS = Math.max(performance.averageROAS * 0.8, 2.0);\nconst maxMER = performance.averageMER * 1.2;\n\nreturn {\n  constraints: {\n    totalBudgetJPY: totalBudget,\n    minROAS: minROAS,\n    maxMER: maxMER,\n    minBudgetPerChannel: 1000,\n    maxBudgetPerChannel: Math.round(totalBudget * 0.6),\n    channelLimits: {\n      tiktok: { min: 1000, max: Math.round(totalBudget * 0.4) },\n      meta: { min: 1000, max: Math.round(totalBudget * 0.4) },\n      google: { min: 1000, max: Math.round(totalBudget * 0.5) }\n    }\n  },\n  currentPerformance: performance,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Calculate Budget Constraints",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/budget/optimize",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "constraints",
+              "value": "={{$json.constraints}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Run Budget Optimization",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "optimization-success",
+              "leftValue": "={{$json.success}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Optimization Successful?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/budget/apply-changes",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "allocations",
+              "value": "={{$json.allocations}}"
+            },
+            {
+              "name": "dryRun",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Apply Budget Changes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1320, 280]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/notifications/slack",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "#urepli-alerts"
+            },
+            {
+              "name": "message",
+              "value": "🚨 Budget optimization failed: {{$json.error}}"
+            },
+            {
+              "name": "severity",
+              "value": "high"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Alert Optimization Failure",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1320, 380]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */4 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Every 4 Hours Performance Check",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [220, 600]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/ads/campaign-metrics",
+        "options": {}
+      },
+      "name": "Get Campaign Metrics",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze campaign performance and identify issues\nconst campaigns = $input.all()[0].json.data;\nconst alerts = [];\nconst actions = [];\n\nfor (const campaign of campaigns) {\n  const roas = campaign.revenue / Math.max(campaign.spend, 1);\n  const cpa = campaign.spend / Math.max(campaign.conversions, 1);\n  \n  // Check for underperforming campaigns\n  if (roas < 1.5 && campaign.spend > 5000) {\n    alerts.push({\n      type: 'low_roas',\n      campaignId: campaign.id,\n      channel: campaign.channel,\n      roas: roas,\n      severity: 'high'\n    });\n    actions.push({\n      type: 'pause_campaign',\n      campaignId: campaign.id,\n      reason: 'Low ROAS performance'\n    });\n  }\n  \n  // Check for high performing campaigns that need more budget\n  if (roas > 4.0 && campaign.budget < campaign.maxBudget * 0.8) {\n    alerts.push({\n      type: 'scale_opportunity',\n      campaignId: campaign.id,\n      channel: campaign.channel,\n      roas: roas,\n      severity: 'medium'\n    });\n    actions.push({\n      type: 'increase_budget',\n      campaignId: campaign.id,\n      newBudget: Math.min(campaign.budget * 1.5, campaign.maxBudget),\n      reason: 'High ROAS performance'\n    });\n  }\n}\n\nreturn {\n  alerts,\n  actions,\n  totalCampaigns: campaigns.length,\n  alertCount: alerts.length,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Analyze Performance",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-alerts",
+              "leftValue": "={{$json.alertCount}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Has Performance Issues?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 600]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/ads/auto-adjust",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "actions",
+              "value": "={{$json.actions}}"
+            },
+            {
+              "name": "confirmationRequired",
+              "value": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Execute Auto-Adjustments",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 600]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/dashboard/performance-alert",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "alerts",
+              "value": "={{$json.alerts}}"
+            },
+            {
+              "name": "actions",
+              "value": "={{$json.adjustments}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Update Dashboard",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1320, 600]
+    }
+  ],
+  "connections": {
+    "Daily 08:00 JST Budget Optimization": {
+      "main": [
+        [
+          {
+            "node": "Get Performance Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Performance Data": {
+      "main": [
+        [
+          {
+            "node": "Calculate Budget Constraints",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Budget Constraints": {
+      "main": [
+        [
+          {
+            "node": "Run Budget Optimization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Budget Optimization": {
+      "main": [
+        [
+          {
+            "node": "Optimization Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optimization Successful?": {
+      "main": [
+        [
+          {
+            "node": "Apply Budget Changes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert Optimization Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Every 4 Hours Performance Check": {
+      "main": [
+        [
+          {
+            "node": "Get Campaign Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Campaign Metrics": {
+      "main": [
+        [
+          {
+            "node": "Analyze Performance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Performance": {
+      "main": [
+        [
+          {
+            "node": "Has Performance Issues?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Performance Issues?": {
+      "main": [
+        [
+          {
+            "node": "Execute Auto-Adjustments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Auto-Adjustments": {
+      "main": [
+        [
+          {
+            "node": "Update Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-09-12T16:00:00.000Z",
+      "updatedAt": "2024-09-12T16:00:00.000Z",
+      "id": "budget-optimization",
+      "name": "Budget Optimization"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-09-12T16:00:00.000Z",
+  "versionId": "1"
+}

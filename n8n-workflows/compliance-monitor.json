@@ -1,0 +1,444 @@
+{
+  "name": "Japanese Compliance Monitor & Auto-Fix",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "*/30 * * * *"
+            }
+          ]
+        }
+      },
+      "name": "Every 30 Minutes Compliance Check",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/content/pending-review",
+        "options": {}
+      },
+      "name": "Get Pending Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Process Each Content",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/compliance/check",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "content",
+              "value": "={{$json}}"
+            },
+            {
+              "name": "rules",
+              "value": "={\n  \"stealthMarketingDisclosure\": true,\n  \"affiliateDisclosure\": true,\n  \"amazonAssociatesDisclosure\": true,\n  \"misleadingClaimsCheck\": true,\n  \"yakujiLawCompliance\": true,\n  \"commercialTransactionDisclosure\": false\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Run Compliance Check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [880, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-compliant",
+              "leftValue": "={{$json.isCompliant}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Is Compliant?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, 300]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/content/approve",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contentId",
+              "value": "={{$json.contentId}}"
+            },
+            {
+              "name": "disclosures",
+              "value": "={{$json.disclosureString}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Approve Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1320, 260]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Analyze compliance issues and determine if auto-fixable\nconst checks = $input.all()[0].json.checks;\nconst blockingIssues = checks.filter(c => c.isBlocking);\nconst fixableIssues = checks.filter(c => \n  c.type === 'disclosure' && \n  (c.id.includes('affiliate') || c.id.includes('amazon'))\n);\n\nconst canAutoFix = blockingIssues.length === fixableIssues.length;\n\nreturn {\n  canAutoFix,\n  blockingIssues,\n  fixableIssues,\n  totalIssues: checks.length,\n  contentId: $input.all()[0].json.contentId\n};"
+      },
+      "name": "Analyze Issues",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 360]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "can-auto-fix",
+              "leftValue": "={{$json.canAutoFix}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "Can Auto-Fix?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 360]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/compliance/auto-fix",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contentId",
+              "value": "={{$json.contentId}}"
+            },
+            {
+              "name": "issues",
+              "value": "={{$json.fixableIssues}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Auto-Fix Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1760, 320]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/content/flag-for-review",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "contentId",
+              "value": "={{$json.contentId}}"
+            },
+            {
+              "name": "issues",
+              "value": "={{$json.blockingIssues}}"
+            },
+            {
+              "name": "severity",
+              "value": "high"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Flag for Manual Review",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1760, 420]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1"
+            }
+          ]
+        }
+      },
+      "name": "Weekly Compliance Report (Monday 9AM JST)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [220, 600]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/compliance/weekly-report",
+        "options": {}
+      },
+      "name": "Generate Compliance Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [440, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format compliance report for Japanese stakeholders\nconst report = $input.all()[0].json.data;\n\nconst formattedReport = `\n📊 週次コンプライアンスレポート\n\n総コンテンツ数: ${report.totalContent}件\n適合率: ${(report.complianceRate * 100).toFixed(1)}%\n自動修正: ${report.autoFixedCount}件\n手動確認必要: ${report.manualReviewCount}件\n\n主な違反項目:\n${report.topViolations.map(v => `• ${v.type}: ${v.count}件`).join('\\n')}\n\n改善提案:\n${report.recommendations.map(r => `• ${r}`).join('\\n')}\n\n詳細レポート: ${report.reportUrl}\n`;\n\nreturn {\n  reportText: formattedReport,\n  summary: report,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "name": "Format Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 600]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/notifications/email",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "to",
+              "value": "compliance@urepli.com"
+            },
+            {
+              "name": "subject",
+              "value": "週次コンプライアンスレポート - {{new Date().toLocaleDateString('ja-JP')}}"
+            },
+            {
+              "name": "body",
+              "value": "={{$json.reportText}}"
+            },
+            {
+              "name": "priority",
+              "value": "normal"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Email Report",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [880, 600]
+    },
+    {
+      "parameters": {
+        "url": "{{$json.baseUrl}}/api/notifications/slack",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "channel",
+              "value": "#compliance-jp"
+            },
+            {
+              "name": "message",
+              "value": "{{$json.reportText}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1100, 600]
+    }
+  ],
+  "connections": {
+    "Every 30 Minutes Compliance Check": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Content": {
+      "main": [
+        [
+          {
+            "node": "Process Each Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Each Content": {
+      "main": [
+        [
+          {
+            "node": "Run Compliance Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Compliance Check": {
+      "main": [
+        [
+          {
+            "node": "Is Compliant?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Compliant?": {
+      "main": [
+        [
+          {
+            "node": "Approve Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Analyze Issues",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Issues": {
+      "main": [
+        [
+          {
+            "node": "Can Auto-Fix?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Auto-Fix?": {
+      "main": [
+        [
+          {
+            "node": "Auto-Fix Content",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag for Manual Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Compliance Report (Monday 9AM JST)": {
+      "main": [
+        [
+          {
+            "node": "Generate Compliance Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Compliance Report": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Email Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Report": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-09-12T16:00:00.000Z",
+      "updatedAt": "2024-09-12T16:00:00.000Z", 
+      "id": "jp-compliance",
+      "name": "Japanese Compliance"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2024-09-12T16:00:00.000Z",
+  "versionId": "1"
+}
