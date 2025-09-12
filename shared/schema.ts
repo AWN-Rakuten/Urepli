@@ -387,6 +387,127 @@ export const eventsCalendar = pgTable("events_calendar", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
+// Video + Blog Factory Tables
+export const topics = pgTable("topics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  keyword: text("keyword").notNull(),
+  intent: text("intent").notNull(), // 'informational', 'commercial', 'navigational', 'transactional'
+  clusterId: varchar("cluster_id").references(() => clusters.id),
+  status: text("status").notNull().default("pending"), // 'pending', 'researching', 'ready', 'published'
+  researchData: jsonb("research_data"), // JP keywords, competitors, outline
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const clusters = pgTable("clusters", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  niche: text("niche").notNull(),
+  siteId: varchar("site_id").references(() => sites.id),
+  targetRoas: real("target_roas").default(3.0),
+  language: text("language").notNull().default("ja"),
+  pillarTopicId: varchar("pillar_topic_id").references(() => topics.id),
+  status: text("status").notNull().default("active"), // 'active', 'paused', 'completed'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const articles = pgTable("articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  siteId: varchar("site_id").references(() => sites.id).notNull(),
+  topicId: varchar("topic_id").references(() => topics.id).notNull(),
+  title: text("title").notNull(),
+  slug: text("slug").notNull(),
+  html: text("html").notNull(),
+  markdown: text("markdown").notNull(),
+  jsonld: jsonb("jsonld"), // Schema.org structured data
+  images: jsonb("images").default([]), // Array of {url, alt, caption}
+  publishedUrl: text("published_url"),
+  status: text("status").notNull().default("draft"), // 'draft', 'published', 'failed'
+  wordCount: integer("word_count").default(0),
+  readingTime: integer("reading_time").default(0), // minutes
+  seoScore: real("seo_score").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  publishedAt: timestamp("published_at"),
+});
+
+export const videos = pgTable("videos", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  topicId: varchar("topic_id").references(() => topics.id).notNull(),
+  script: text("script").notNull(),
+  voiceId: text("voice_id").notNull().default("jp_female_a"),
+  durationSeconds: real("duration_s"),
+  mp4Url: text("mp4_url"),
+  srtUrl: text("srt_url"),
+  thumbnailUrls: jsonb("thumb_urls").default([]),
+  platformIds: jsonb("platform_ids").default({}), // {youtube: 'video_id', tiktok: 'video_id'}
+  status: text("status").notNull().default("pending"), // 'pending', 'processing', 'ready', 'published', 'failed'
+  generationCost: real("generation_cost").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  publishedAt: timestamp("published_at"),
+});
+
+export const sites = pgTable("sites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  domain: text("domain").notNull().unique(),
+  subdomain: text("subdomain"),
+  host: text("host").notNull().default("vercel"), // 'vercel', 'cloudflare', 'wp'
+  cms: text("cms").notNull().default("strapi"), // 'strapi', 'ghost', 'wp'
+  apiKeys: jsonb("api_keys").default({}), // CMS credentials, hosting tokens
+  repoUrl: text("repo_url"), // GitHub repository URL
+  deployUrl: text("deploy_url"), // Live site URL
+  status: text("status").notNull().default("active"), // 'active', 'suspended', 'deleted'
+  niche: text("niche").notNull(),
+  language: text("language").notNull().default("ja"),
+  brandColors: jsonb("brand_colors").default({}),
+  logoUrl: text("logo_url"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const internalLinks = pgTable("internal_links", {
+  fromArticleId: varchar("from_article_id").references(() => articles.id).notNull(),
+  toArticleId: varchar("to_article_id").references(() => articles.id).notNull(),
+  anchor: text("anchor").notNull(),
+  position: integer("position"), // Character position in content
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  pk: {
+    primaryKey: [table.fromArticleId, table.toArticleId]
+  }
+}));
+
+export const performancePageDaily = pgTable("performance_page_daily", {
+  url: text("url").notNull(),
+  date: timestamp("date").notNull(),
+  impressions: integer("impressions").default(0),
+  clicks: integer("clicks").default(0),
+  avgPosition: real("avg_pos").default(0),
+  dwellTime: real("dwell").default(0), // seconds
+  rpm: real("rpm").default(0), // revenue per mille
+  articleId: varchar("article_id").references(() => articles.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => ({
+  pk: {
+    primaryKey: [table.url, table.date]
+  }
+}));
+
+export const ttsVoices = pgTable("tts_voices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  provider: text("provider").notNull().default("voicevox"), // 'voicevox', 'piper', 'coqui'
+  voiceId: text("voice_id").notNull(), // Provider-specific voice identifier
+  gender: text("gender").notNull(), // 'male', 'female', 'neutral'
+  language: text("language").notNull().default("ja"),
+  speed: real("speed").default(1.0),
+  energy: real("energy").default(1.0),
+  abGroup: text("ab_group"), // For A/B testing voices
+  performanceScore: real("performance_score").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Type exports for new tables
 export type AffiliateNetwork = typeof affiliateNetworks.$inferSelect;
 export type InsertAffiliateNetwork = typeof affiliateNetworks.$inferInsert;
@@ -398,3 +519,21 @@ export type VariantMetricsDaily = typeof variantMetricsDaily.$inferSelect;
 export type InsertVariantMetricsDaily = typeof variantMetricsDaily.$inferInsert;
 export type EventsCalendar = typeof eventsCalendar.$inferSelect;
 export type InsertEventsCalendar = typeof eventsCalendar.$inferInsert;
+
+// Video + Blog Factory Types
+export type Topic = typeof topics.$inferSelect;
+export type InsertTopic = typeof topics.$inferInsert;
+export type Cluster = typeof clusters.$inferSelect;
+export type InsertCluster = typeof clusters.$inferInsert;
+export type Article = typeof articles.$inferSelect;
+export type InsertArticle = typeof articles.$inferInsert;
+export type Video = typeof videos.$inferSelect;
+export type InsertVideo = typeof videos.$inferInsert;
+export type Site = typeof sites.$inferSelect;
+export type InsertSite = typeof sites.$inferInsert;
+export type InternalLink = typeof internalLinks.$inferSelect;
+export type InsertInternalLink = typeof internalLinks.$inferInsert;
+export type PerformancePageDaily = typeof performancePageDaily.$inferSelect;
+export type InsertPerformancePageDaily = typeof performancePageDaily.$inferInsert;
+export type TTSVoice = typeof ttsVoices.$inferSelect;
+export type InsertTTSVoice = typeof ttsVoices.$inferInsert;

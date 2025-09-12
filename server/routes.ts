@@ -38,6 +38,12 @@ import automationRoutes from "./routes/automation-routes";
 import referralApiRoutes from "./routes/referral-api";
 import { realisticDataGenerator } from "./services/realistic-data-generator";
 
+// Video + Blog Factory Routes
+import researchRoutes from "./routes/research";
+import blogRoutes from "./routes/blog";
+import videoRoutes from "./routes/video";
+import webfactoryRoutes from "./routes/webfactory";
+
 // Enhanced services
 import { MCPServer } from "./services/mcp-server";
 import { APILessSocialMediaAutomation } from "./services/api-less-social-automation";
@@ -154,6 +160,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   console.log('Registering Ultimate Referral System routes at /api/referral');
   app.use('/api/referral', referralApiRoutes);
   console.log('Ultimate Referral System routes registered successfully');
+
+  // Register Video + Blog Factory routes
+  console.log('Registering Video + Blog Factory routes');
+  app.use('/api/research', researchRoutes);
+  app.use('/api/blog', blogRoutes);
+  app.use('/api/video', videoRoutes);
+  app.use('/api/webfactory', webfactoryRoutes);
+  console.log('Video + Blog Factory routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
