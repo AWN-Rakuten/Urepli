@@ -17,6 +17,7 @@ import NotFound from "@/pages/not-found";
 import PredictiveSchedulingDashboard from "@/components/PredictiveSchedulingDashboard";
 import ReferralOnboardingGuide from "@/components/onboarding/ReferralOnboardingGuide";
 import ReferralPerformanceDashboard from "@/components/dashboard/ReferralPerformanceDashboard";
+import { JapaneseMobileAppDashboard } from "@/components/JapaneseMobileAppDashboard";
 function Router() {
   return (
     <Switch>
@@ -33,6 +34,7 @@ function Router() {
       <Route path="/predictive-scheduling" component={PredictiveSchedulingDashboard} />
       <Route path="/onboarding" component={ReferralOnboardingGuide} />
       <Route path="/referral-dashboard" component={ReferralPerformanceDashboard} />
+      <Route path="/japanese-mobile" component={JapaneseMobileAppDashboard} />
       <Route path="/settings" component={ConfigurationPage} />
       <Route component={NotFound} />
     </Switch>

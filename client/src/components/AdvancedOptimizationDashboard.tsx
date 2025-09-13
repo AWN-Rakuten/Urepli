@@ -163,7 +163,7 @@ export function AdvancedOptimizationDashboard() {
       </div>
 
       {/* Key Insights */}
-      {insights && (
+      {insights && insights.insights && Array.isArray(insights.insights) && (
         <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
           <Lightbulb className="h-4 w-4" />
           <AlertDescription>
@@ -301,11 +301,11 @@ export function AdvancedOptimizationDashboard() {
               </div>
 
               {/* Schedule Predictions */}
-              {schedulePrediction && (
+              {schedulePrediction && schedulePrediction.optimalTimes && Array.isArray(schedulePrediction.optimalTimes) && (
                 <div className="space-y-4">
                   <h4 className="font-medium">Optimal Scheduling Recommendations</h4>
                   <div className="grid gap-3">
-                    {schedulePrediction.optimalTimes.map((time, index) => (
+                    {schedulePrediction.optimalTimes.map((time: any, index: number) => (
                       <div key={index} className="flex items-center justify-between p-3 border rounded" data-testid={`schedule-recommendation-${index}`}>
                         <div>
                           <div className="font-medium">{time.timeSlot}</div>
@@ -349,45 +349,51 @@ export function AdvancedOptimizationDashboard() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {optimizationState?.arms?.map((arm: OptimizationArm) => (
-                    <div key={arm.id} className="border rounded-lg p-4 space-y-3" data-testid={`arm-${arm.id}`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium">{arm.name}</h4>
-                          <Badge variant="outline">{arm.platform}</Badge>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-green-600" data-testid={`arm-reward-${arm.id}`}>
-                            {formatPercentage(arm.expectedReward)}
+                  {optimizationState?.arms && Array.isArray(optimizationState.arms) ? (
+                    optimizationState.arms.map((arm: OptimizationArm) => (
+                      <div key={arm.id} className="border rounded-lg p-4 space-y-3" data-testid={`arm-${arm.id}`}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-medium">{arm.name}</h4>
+                            <Badge variant="outline">{arm.platform}</Badge>
                           </div>
-                          <div className="text-sm text-muted-foreground">Expected Reward</div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-green-600" data-testid={`arm-reward-${arm.id}`}>
+                              {formatPercentage(arm.expectedReward)}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Expected Reward</div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div>
+                            <div className="text-sm text-muted-foreground">Strategy</div>
+                            <div className="font-medium">{arm.strategy}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-muted-foreground">Target Audience</div>
+                            <div className="font-medium">{arm.metadata.targetAudience}</div>
+                          </div>
+                          <div>
+                            <div className="text-sm text-muted-foreground">Optimal Time</div>
+                            <div className="font-medium">{arm.metadata.timeOfDay}</div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Confidence</span>
+                            <span>{formatPercentage(1 - arm.confidence)}</span>
+                          </div>
+                          <Progress value={(1 - arm.confidence) * 100} className="h-2" />
                         </div>
                       </div>
-                      
-                      <div className="grid gap-4 md:grid-cols-3">
-                        <div>
-                          <div className="text-sm text-muted-foreground">Strategy</div>
-                          <div className="font-medium">{arm.strategy}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-muted-foreground">Target Audience</div>
-                          <div className="font-medium">{arm.metadata.targetAudience}</div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-muted-foreground">Optimal Time</div>
-                          <div className="font-medium">{arm.metadata.timeOfDay}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Confidence</span>
-                          <span>{formatPercentage(1 - arm.confidence)}</span>
-                        </div>
-                        <Progress value={(1 - arm.confidence) * 100} className="h-2" />
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      No optimization arms available
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </CardContent>
@@ -407,41 +413,47 @@ export function AdvancedOptimizationDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {optimizationState?.ensembles?.map((ensemble: any) => (
-                <div key={ensemble.id} className="border rounded-lg p-4 space-y-4" data-testid={`ensemble-${ensemble.id}`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="font-medium">{ensemble.name}</h4>
-                      <Badge variant="secondary">{ensemble.ensembleStrategy}</Badge>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-blue-600" data-testid={`ensemble-performance-${ensemble.id}`}>
-                        {(ensemble.performance * 100).toFixed(1)}%
+              {optimizationState?.ensembles && Array.isArray(optimizationState.ensembles) ? (
+                optimizationState.ensembles.map((ensemble: any) => (
+                  <div key={ensemble.id} className="border rounded-lg p-4 space-y-4" data-testid={`ensemble-${ensemble.id}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">{ensemble.name}</h4>
+                        <Badge variant="secondary">{ensemble.ensembleStrategy}</Badge>
                       </div>
-                      <div className="text-sm text-muted-foreground">Performance</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="text-sm font-medium">Workflow Weights</div>
-                    {ensemble.workflows.map((workflowId: string, index: number) => (
-                      <div key={workflowId} className="flex items-center justify-between">
-                        <span className="text-sm">{workflowId}</span>
-                        <div className="flex items-center gap-2">
-                          <Progress value={ensemble.weights[index] * 100} className="w-24 h-2" />
-                          <span className="text-sm font-medium w-12 text-right">
-                            {(ensemble.weights[index] * 100).toFixed(0)}%
-                          </span>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-blue-600" data-testid={`ensemble-performance-${ensemble.id}`}>
+                          {(ensemble.performance * 100).toFixed(1)}%
                         </div>
+                        <div className="text-sm text-muted-foreground">Performance</div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
 
-                  <div className="text-xs text-muted-foreground">
-                    Last optimized: {new Date(ensemble.lastOptimized).toLocaleString()}
+                    <div className="space-y-3">
+                      <div className="text-sm font-medium">Workflow Weights</div>
+                      {ensemble.workflows?.map((workflowId: string, index: number) => (
+                        <div key={workflowId} className="flex items-center justify-between">
+                          <span className="text-sm">{workflowId}</span>
+                          <div className="flex items-center gap-2">
+                            <Progress value={ensemble.weights[index] * 100} className="w-24 h-2" />
+                            <span className="text-sm font-medium w-12 text-right">
+                              {(ensemble.weights[index] * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="text-xs text-muted-foreground">
+                      Last optimized: {new Date(ensemble.lastOptimized).toLocaleString()}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  No workflow ensembles available
                 </div>
-              ))}
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -459,13 +471,13 @@ export function AdvancedOptimizationDashboard() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="text-center p-4 bg-muted rounded">
-                <div className="text-2xl font-bold" data-testid="text-total-arms">{insights.totalArms}</div>
+                <div className="text-2xl font-bold" data-testid="text-total-arms">{insights?.totalArms || 0}</div>
                 <div className="text-sm text-muted-foreground">Active Arms</div>
               </div>
               
               <div className="text-center p-4 bg-muted rounded">
                 <div className="text-2xl font-bold" data-testid="text-average-reward">
-                  {formatPercentage(insights.averageReward)}
+                  {formatPercentage(insights?.averageReward || 0)}
                 </div>
                 <div className="text-sm text-muted-foreground">Average Reward</div>
               </div>

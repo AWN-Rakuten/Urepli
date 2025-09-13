@@ -26,6 +26,7 @@ import { registerSocialAccountRoutes } from "./routes/social-accounts";
 import { MultiAccountPoster } from "./services/multi-account-poster";
 import googleCloudRoutes from "./routes/google-cloud-routes";
 import n8nJapaneseRoutes from "./routes/n8n-japanese-routes";
+import japaneseMobileRoutes from "./routes/japanese-mobile-routes";
 import affiliateRoutes from "./routes/affiliate";
 import socialMediaRoutes from "./routes/social-media-routes";
 import oauthRoutes from "./routes/oauth-routes";
@@ -119,6 +120,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register Japanese n8n workflow routes
   app.use('/api/n8n-japanese', n8nJapaneseRoutes);
+  
+  // Register Japanese mobile app development routes
+  console.log('Registering Japanese Mobile App routes at /api/japanese-mobile');
+  app.use('/api/japanese-mobile', japaneseMobileRoutes);
+  console.log('Japanese Mobile App routes registered successfully');
   
   // Register affiliate tracking routes
   app.use('/api/affiliate', affiliateRoutes);
