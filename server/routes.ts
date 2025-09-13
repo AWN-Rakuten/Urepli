@@ -37,6 +37,7 @@ import optimizationRoutes from "./routes/optimization-routes";
 import enhancedAIRoutes from "./routes/enhanced-ai-routes";
 import automationRoutes from "./routes/automation-routes";
 import referralApiRoutes from "./routes/referral-api";
+import quantAgentsRoutes from "./routes/quant-agents-routes";
 import { realisticDataGenerator } from "./services/realistic-data-generator";
 
 // Video + Blog Factory Routes
@@ -176,6 +177,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/webfactory', webfactoryRoutes);
   app.use('/api/optimization', optimizationFactoryRoutes);
   console.log('Video + Blog Factory routes registered successfully');
+
+  // Register Quant Agents routes
+  console.log('Registering Quant Agents routes');
+  app.use('/api/quant-agents', quantAgentsRoutes);
+  console.log('Quant Agents routes registered successfully');
   
   // Initialize multi-account posting service
   const multiAccountPoster = new MultiAccountPoster(storage);
