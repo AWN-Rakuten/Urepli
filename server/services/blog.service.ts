@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/genai";
+import { createGeminiClient } from './mock-gemini';
 import { marked } from 'marked';
 
 interface BlogGenerationRequest {
@@ -60,14 +60,11 @@ interface BlogGenerationResponse {
 }
 
 class BlogService {
-  private gemini: GoogleGenerativeAI;
+  private gemini: GoogleGenAI;
   private model: any;
 
   constructor() {
-    if (!process.env.GOOGLE_GEMINI_API_KEY) {
-      throw new Error('GOOGLE_GEMINI_API_KEY is required for blog service');
-    }
-    this.gemini = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY);
+    this.gemini = createGeminiClient(process.env.GOOGLE_GEMINI_API_KEY);
     this.model = this.gemini.getGenerativeModel({ model: "gemini-1.5-flash" });
   }
 

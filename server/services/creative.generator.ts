@@ -5,7 +5,7 @@
 
 import { tiktokTrendsService, TikTokTrend } from './trends.tiktok';
 import { Offer } from '../../shared/schema';
-import { GoogleGenerativeAI } from '@google/genai';
+import { createGeminiClient } from './mock-gemini';
 
 export interface CreativeInput {
   trend: TikTokTrend;
@@ -52,14 +52,14 @@ export interface CreativeCaption {
  * Japanese market optimized content generator
  */
 export class CreativeGeneratorService {
-  private genai: GoogleGenerativeAI;
+  private genai: GoogleGenAI;
   
   constructor() {
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error('GOOGLE_GEMINI_API_KEY is required');
     }
-    this.genai = new GoogleGenerativeAI(apiKey);
+    this.genai = new GoogleGenAI(apiKey);
   }
 
   /**

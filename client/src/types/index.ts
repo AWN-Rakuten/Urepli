@@ -98,3 +98,6 @@ export interface OptimizationEvent {
   status: string;
   createdAt: string;
 }
+
+// Re-export API types
+export * from './api';

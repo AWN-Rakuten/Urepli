@@ -253,7 +253,8 @@ export const eventPresetModifiers = {
         duration: 2,
         description: 'Show SPU badge and point multiplier',
         shotType: 'graphics',
-        jpText: '今だけポイント◯倍！'
+        jpText: '今だけポイント◯倍！',
+        transitions: ['fade-in', 'bounce']
       }
     ]
   },
@@ -267,7 +268,8 @@ export const eventPresetModifiers = {
         duration: 2,
         description: 'Show 5 and 0 day special badge',
         shotType: 'graphics',
-        jpText: '5と0の日限定！'
+        jpText: '5と0の日限定！',
+        transitions: ['slide-in', 'pulse']
       }
     ]
   },
@@ -281,7 +283,8 @@ export const eventPresetModifiers = {
         duration: 3,
         description: 'Show super sale badge with countdown',
         shotType: 'graphics',
-        jpText: 'スーパーSALE開催中！'
+        jpText: 'スーパーSALE開催中！',
+        transitions: ['zoom-in', 'flash']
       }
     ]
   }

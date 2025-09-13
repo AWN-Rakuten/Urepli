@@ -68,7 +68,6 @@ export function setupBoostCronJob() {
       console.error('❌ Auto-boost scan failed:', error);
     }
   }, {
-    scheduled: true,
     timezone: 'UTC'
   });
 
@@ -85,7 +84,7 @@ export function setupBoostCronJob() {
       console.error('❌ Campaign performance monitoring failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 
@@ -100,7 +99,7 @@ export function setupBoostCronJob() {
       console.error('❌ Daily campaign optimization failed:', error);
     }
   }, {
-    scheduled: true,
+    
     timezone: 'UTC'
   });
 
